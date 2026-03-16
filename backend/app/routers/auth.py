@@ -21,3 +21,28 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserOut)
 def get_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+@router.post("/setup")
+def setup(db: Session = Depends(get_db)):
+    from app.core.security import hash_password
+    from app.models.user import User
+    from app.models.transaction import Transaction
+    from app.models.customer import Customer
+    from app.models.daily_cash import DailyCash
+    from datetime import date, timedelta
+    from app.core.database import Base, engine
+
+    Base.metadata.create_all(bind=engine)
+
+    if db.query(User).first():
+        return {"message": "Already seeded"}
+
+    manager = User(full_name="Diko Manager", username="manager", password=hash_password("Dikos2024!"), role="manager")
+    db.add(manager)
+    db.flush()
+
+    for name, username in [("Kamga Rodrigue","kamga"),("Ngo Biyong Sylvie","sylvie"),("Mbida Eric","mbida")]:
+        db.add(User(full_name=name, username=username, password=hash_password("Worker123!"), role="worker"))
+    db.commit()
+
+    return {"message": "Database seeded successfully", "manager": "manager / Dikos2024!", "workers": "kamga, sylvie, mbida / Worker123!"}
