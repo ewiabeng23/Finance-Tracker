@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, createElement } from 'react'
 
 export function useToast() {
   const [toast, setToast] = useState(null)
@@ -8,12 +8,14 @@ export function useToast() {
     setTimeout(() => setToast(null), 3500)
   }, [])
 
-  const ToastEl = toast ? (
-    <div className={`toast ${toast.type}`}>
-      <span>{toast.type === 'success' ? '✓' : '✕'}</span>
-      {toast.message}
-    </div>
-  ) : null
+  const ToastEl = toast
+    ? createElement(
+        'div',
+        { className: `toast ${toast.type}` },
+        createElement('span', null, toast.type === 'success' ? '✓' : '✕'),
+        toast.message
+      )
+    : null
 
   return { show, ToastEl }
 }
