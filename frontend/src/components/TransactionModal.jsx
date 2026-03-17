@@ -2,9 +2,13 @@ import { useState, useEffect } from 'react'
 import { transactionsAPI, customersAPI } from '../api/endpoints'
 import { EXPENSE_CATS, INCOME_CATS, CURRENCIES, todayISO, genRef } from '../api/utils'
 import { useAuth } from '../context/AuthContext'
+import { useLang } from '../context/LanguageContext'
+import { TR } from '../api/translations'
 
 export default function TransactionModal({ onClose, onSaved, initial = null }) {
   const { isManager, user } = useAuth()
+  const { lang } = useLang()
+  const t = k => TR[lang][k]
   const isEdit = !!initial
 
   const [type,        setType]        = useState(initial?.type || 'income')
@@ -25,14 +29,13 @@ export default function TransactionModal({ onClose, onSaved, initial = null }) {
     customersAPI.list().then(r => setCustomers(r.data))
   }, [])
 
-  // Auto-set category default when type changes
   useEffect(() => {
     if (!isEdit) setCategory(type === 'income' ? 'prime' : 'transport')
   }, [type])
 
   const submit = async () => {
-    if (!amount || parseFloat(amount) <= 0) { setError('Veuillez saisir un montant valide'); return }
-    if (!description.trim()) { setError('La description est requise'); return }
+    if (!amount || parseFloat(amount) <= 0) { setError(t('modal_err_amount')); return }
+    if (!description.trim()) { setError(t('modal_err_desc')); return }
     setLoading(true); setError('')
     const payload = {
       reference, date, type, category,
@@ -41,14 +44,11 @@ export default function TransactionModal({ onClose, onSaved, initial = null }) {
       worker_name: type === 'expense' ? (workerName || user?.full_name) : null,
     }
     try {
-      if (isEdit) {
-        await transactionsAPI.update(initial.id, payload)
-      } else {
-        await transactionsAPI.create(payload)
-      }
+      if (isEdit) await transactionsAPI.update(initial.id, payload)
+      else        await transactionsAPI.create(payload)
       onSaved()
     } catch (e) {
-      setError(e.response?.data?.detail || 'Erreur lors de la sauvegarde')
+      setError(e.response?.data?.detail || t('modal_err_save'))
     } finally {
       setLoading(false)
     }
@@ -60,43 +60,41 @@ export default function TransactionModal({ onClose, onSaved, initial = null }) {
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal">
         <button className="modal-close" onClick={onClose}>×</button>
-        <div className="modal-eyebrow">{isEdit ? 'Modifier' : 'Nouvelle'} transaction</div>
-        <h2>{isEdit ? 'Modifier le mouvement' : 'Enregistrer un mouvement'}</h2>
+        <div className="modal-eyebrow">{isEdit ? t('modal_edit_eyebrow') : t('modal_new_eyebrow')}</div>
+        <h2>{isEdit ? t('modal_edit_title') : t('modal_new_title')}</h2>
 
-        {/* Type toggle — workers can always pick type */}
         <div className="form-group">
-          <label>Type de mouvement</label>
+          <label>{t('modal_type')}</label>
           <div className="type-toggle">
             <button
               className={`type-opt income ${type === 'income' ? 'active' : ''}`}
               onClick={() => setType('income')}
               disabled={isEdit && !isManager}
-            >↑ Entrée</button>
+            >{t('modal_type_in')}</button>
             <button
               className={`type-opt expense ${type === 'expense' ? 'active' : ''}`}
               onClick={() => setType('expense')}
               disabled={isEdit && !isManager}
-            >↓ Sortie</button>
+            >{t('modal_type_out')}</button>
           </div>
         </div>
 
         <div className="form-row">
           <div className="form-group">
-            <label>Date</label>
+            <label>{t('modal_date')}</label>
             <input type="date" value={date} onChange={e => setDate(e.target.value)} />
           </div>
           <div className="form-group">
-            <label>Référence</label>
-            <input value={reference} onChange={e => setReference(e.target.value)} placeholder="TX-0001" />
+            <label>{t('modal_ref')}</label>
+            <input value={reference} onChange={e => setReference(e.target.value)} />
           </div>
         </div>
 
-        {/* Income: pick client customer */}
         {type === 'income' && (
           <div className="form-group">
-            <label>Client</label>
+            <label>{t('modal_customer')}</label>
             <select value={customerId} onChange={e => setCustomerId(e.target.value)}>
-              <option value="">— Sélectionner un client —</option>
+              <option value="">{t('modal_customer_placeholder')}</option>
               {customers.map(c => (
                 <option key={c.id} value={c.id}>{c.full_name}</option>
               ))}
@@ -104,10 +102,9 @@ export default function TransactionModal({ onClose, onSaved, initial = null }) {
           </div>
         )}
 
-        {/* Expense: pick worker */}
         {type === 'expense' && (
           <div className="form-group">
-            <label>Collaborateur</label>
+            <label>{t('modal_worker')}</label>
             <input
               value={workerName}
               onChange={e => setWorkerName(e.target.value)}
@@ -118,15 +115,15 @@ export default function TransactionModal({ onClose, onSaved, initial = null }) {
 
         <div className="form-row">
           <div className="form-group">
-            <label>Catégorie</label>
+            <label>{t('modal_category')}</label>
             <select value={category} onChange={e => setCategory(e.target.value)}>
               {Object.entries(catOptions).map(([k, v]) => (
-                <option key={k} value={k}>{v.label}</option>
+                <option key={k} value={k}>{lang === 'fr' ? v.label : v.labelEn}</option>
               ))}
             </select>
           </div>
           <div className="form-group">
-            <label>Devise</label>
+            <label>{t('modal_currency')}</label>
             <select value={currency} onChange={e => setCurrency(e.target.value)}>
               {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
@@ -134,27 +131,27 @@ export default function TransactionModal({ onClose, onSaved, initial = null }) {
         </div>
 
         <div className="form-group">
-          <label>Montant</label>
+          <label>{t('modal_amount')}</label>
           <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" min="0" step="0.01" />
         </div>
 
         <div className="form-group">
-          <label>Description *</label>
-          <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Détail de la transaction" />
+          <label>{t('modal_desc')}</label>
+          <input value={description} onChange={e => setDescription(e.target.value)} placeholder={t('modal_desc_placeholder')} />
         </div>
 
         <div className="form-group">
-          <label>Note (optionnel)</label>
-          <textarea rows={2} value={note} onChange={e => setNote(e.target.value)} placeholder="Remarques..." />
+          <label>{t('modal_note')}</label>
+          <textarea rows={2} value={note} onChange={e => setNote(e.target.value)} placeholder={t('modal_note_placeholder')} />
         </div>
 
-        {error && <p className="form-error" style={{ marginBottom: 12 }}>⚠ {error}</p>}
+        {error && <p className="form-error" style={{ marginBottom:12 }}>⚠ {error}</p>}
 
         <div className="modal-actions">
-          <button className="btn btn-primary" style={{ flex: 1 }} onClick={submit} disabled={loading}>
-            {loading ? 'Enregistrement...' : isEdit ? 'Mettre à jour' : 'Enregistrer'}
+          <button className="btn btn-primary" style={{ flex:1 }} onClick={submit} disabled={loading}>
+            {loading ? t('modal_saving') : isEdit ? t('modal_update') : t('modal_save')}
           </button>
-          <button className="btn btn-outline" onClick={onClose}>Annuler</button>
+          <button className="btn btn-outline" onClick={onClose}>{t('modal_cancel')}</button>
         </div>
       </div>
     </div>
