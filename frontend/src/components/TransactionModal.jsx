@@ -1,150 +1,183 @@
 import { useState, useEffect } from 'react'
-import { transactionsAPI } from '../api/endpoints'
-import { formatAmount, formatDate, getCatBadge, getCatLabel, EXPENSE_CATS, INCOME_CATS } from '../api/utils'
+import { createPortal } from 'react-dom'
+import { transactionsAPI, customersAPI } from '../api/endpoints'
+import { EXPENSE_CATS, INCOME_CATS, CURRENCIES, todayISO, genRef } from '../api/utils'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LanguageContext'
 import { TR } from '../api/translations'
-import TransactionModal from '../components/TransactionModal'
-import { useToast } from '../hooks/useToast'
 
-export default function TransactionsPage() {
-  const { isManager } = useAuth()
+export default function TransactionModal({ onClose, onSaved, initial = null }) {
+  const { isManager, user } = useAuth()
   const { lang } = useLang()
   const t = k => TR[lang][k]
-  const { show, ToastEl } = useToast()
-  const [transactions, setTransactions] = useState([])
-  const [filter,       setFilter]       = useState('all')
-  const [search,       setSearch]       = useState('')
-  const [catFilter,    setCatFilter]    = useState('all')
-  const [loading,      setLoading]      = useState(true)
-  const [showModal,    setShowModal]    = useState(false)
-  const [editing,      setEditing]      = useState(null)
+  const isEdit = !!initial
 
-  const load = async () => {
-    setLoading(true)
-    const params = {}
-    if (filter !== 'all') params.type = filter
-    if (search) params.search = search
-    if (catFilter !== 'all') params.category = catFilter
-    const { data } = await transactionsAPI.list(params)
-    setTransactions(data)
-    setLoading(false)
+  const [type,        setType]        = useState(initial?.type || 'income')
+  const [date,        setDate]        = useState(initial?.date || todayISO())
+  const [reference,   setReference]   = useState(initial?.reference || genRef())
+  const [amount,      setAmount]      = useState(initial?.amount || '')
+  const [currency,    setCurrency]    = useState(initial?.currency || 'XAF')
+  const [category,    setCategory]    = useState(initial?.category || 'prime')
+  const [description, setDescription] = useState(initial?.description || '')
+  const [note,        setNote]        = useState(initial?.note || '')
+  const [customerId,  setCustomerId]  = useState(initial?.customer_id || '')
+  const [workerName,  setWorkerName]  = useState(initial?.worker_name || '')
+  const [customers,   setCustomers]   = useState([])
+  const [loading,     setLoading]     = useState(false)
+  const [error,       setError]       = useState('')
+
+  useEffect(() => {
+    customersAPI.list().then(r => setCustomers(r.data))
+  }, [])
+
+  useEffect(() => {
+    if (!isEdit) setCategory(type === 'income' ? 'prime' : 'transport')
+  }, [type])
+
+  const submit = async () => {
+    if (!amount || parseFloat(amount) <= 0) { setError(t('modal_err_amount')); return }
+    if (!description.trim()) { setError(t('modal_err_desc')); return }
+    setLoading(true); setError('')
+    const payload = {
+      reference, date, type, category,
+      amount: parseFloat(amount), currency, description, note: note || null,
+      customer_id: customerId ? parseInt(customerId) : null,
+      worker_name: type === 'expense' ? (workerName || user?.full_name) : null,
+    }
+    try {
+      if (isEdit) await transactionsAPI.update(initial.id, payload)
+      else        await transactionsAPI.create(payload)
+      onSaved()
+    } catch (e) {
+      setError(e.response?.data?.detail || t('modal_err_save'))
+    } finally {
+      setLoading(false)
+    }
   }
 
-  useEffect(() => { load() }, [filter, search, catFilter])
+  const catOptions = type === 'income' ? INCOME_CATS : EXPENSE_CATS
 
-  const handleDelete = async (tx) => {
-    if (!window.confirm(`${t('tx_confirm_del')} ${tx.reference}?`)) return
-    await transactionsAPI.delete(tx.id)
-    show(t('tx_deleted'), 'success')
-    load()
-  }
+  return createPortal(
+    <div
+      style={{
+        position: 'fixed', inset: 0, top: 0, left: 0, right: 0, bottom: 0,
+        width: '100vw', height: '100vh',
+        background: 'rgba(5,10,22,0.88)',
+        zIndex: 9999,
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+        padding: '40px 20px', overflowY: 'auto',
+      }}
+      onClick={e => e.target === e.currentTarget && onClose()}
+    >
+      <div style={{
+        background: 'var(--navy-light)', border: '1px solid var(--navy-border)',
+        width: '100%', maxWidth: 540, padding: 40, position: 'relative', margin: 'auto',
+      }}>
+        <button
+          onClick={onClose}
+          style={{ position:'absolute', top:16, right:16, background:'none', border:'none', color:'var(--muted)', fontSize:22, cursor:'pointer', lineHeight:1 }}
+        >×</button>
 
-  const allCats = { ...INCOME_CATS, ...EXPENSE_CATS }
+        <div style={{ fontSize:10, letterSpacing:'2.5px', textTransform:'uppercase', color:'var(--gold)', marginBottom:8 }}>
+          {isEdit ? t('modal_edit_eyebrow') : t('modal_new_eyebrow')}
+        </div>
+        <h2 style={{ fontFamily:'var(--font-serif)', fontSize:28, fontWeight:400, marginBottom:28 }}>
+          {isEdit ? t('modal_edit_title') : t('modal_new_title')}
+        </h2>
 
-  return (
-    <div className="page-content">
-      {ToastEl}
-      <div className="page-header">
-        <div className="page-eyebrow"><span className="eyebrow-line" />{t('tx_eyebrow')}</div>
-        <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', flexWrap:'wrap', gap:16 }}>
-          <h1>{t('tx_title')}</h1>
-          <button className="btn btn-primary" onClick={() => { setEditing(null); setShowModal(true) }}>
-            + {t('tx_new')}
+        {/* Type toggle */}
+        <div className="form-group">
+          <label>{t('modal_type')}</label>
+          <div className="type-toggle">
+            <button
+              className={`type-opt income ${type === 'income' ? 'active' : ''}`}
+              onClick={() => setType('income')}
+              disabled={isEdit && !isManager}
+            >{t('modal_type_in')}</button>
+            <button
+              className={`type-opt expense ${type === 'expense' ? 'active' : ''}`}
+              onClick={() => setType('expense')}
+              disabled={isEdit && !isManager}
+            >{t('modal_type_out')}</button>
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>{t('modal_date')}</label>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>{t('modal_ref')}</label>
+            <input value={reference} onChange={e => setReference(e.target.value)} />
+          </div>
+        </div>
+
+        {type === 'income' && (
+          <div className="form-group">
+            <label>{t('modal_customer')}</label>
+            <select value={customerId} onChange={e => setCustomerId(e.target.value)}>
+              <option value="">{t('modal_customer_placeholder')}</option>
+              {customers.map(c => (
+                <option key={c.id} value={c.id}>{c.full_name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {type === 'expense' && (
+          <div className="form-group">
+            <label>{t('modal_worker')}</label>
+            <input
+              value={workerName}
+              onChange={e => setWorkerName(e.target.value)}
+              placeholder={user?.full_name}
+            />
+          </div>
+        )}
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>{t('modal_category')}</label>
+            <select value={category} onChange={e => setCategory(e.target.value)}>
+              {Object.entries(catOptions).map(([k, v]) => (
+                <option key={k} value={k}>{lang === 'fr' ? v.label : (v.labelEn || v.label)}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label>{t('modal_currency')}</label>
+            <select value={currency} onChange={e => setCurrency(e.target.value)}>
+              {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label>{t('modal_amount')}</label>
+          <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" min="0" step="0.01" />
+        </div>
+
+        <div className="form-group">
+          <label>{t('modal_desc')}</label>
+          <input value={description} onChange={e => setDescription(e.target.value)} placeholder={t('modal_desc_placeholder')} />
+        </div>
+
+        <div className="form-group">
+          <label>{t('modal_note')}</label>
+          <textarea rows={2} value={note} onChange={e => setNote(e.target.value)} placeholder={t('modal_note_placeholder')} />
+        </div>
+
+        {error && <p style={{ fontSize:12, color:'var(--red)', marginBottom:12 }}>⚠ {error}</p>}
+
+        <div style={{ display:'flex', gap:12, marginTop:8 }}>
+          <button className="btn btn-primary" style={{ flex:1 }} onClick={submit} disabled={loading}>
+            {loading ? t('modal_saving') : isEdit ? t('modal_update') : t('modal_save')}
           </button>
+          <button className="btn btn-outline" onClick={onClose}>{t('modal_cancel')}</button>
         </div>
       </div>
-
-      <div className="filter-bar">
-        <div className="filter-tabs">
-          {[['all', t('tx_filter_all')], ['income', t('tx_filter_in')], ['expense', t('tx_filter_out')]].map(([v,l]) => (
-            <button key={v} className={`filter-tab ${filter===v?'active':''}`} onClick={() => setFilter(v)}>{l}</button>
-          ))}
-        </div>
-        <div className="search-wrap">
-          <span className="search-icon">⌕</span>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t('tx_search')} style={{ width:220 }} />
-        </div>
-        <select
-          value={catFilter} onChange={e => setCatFilter(e.target.value)}
-          style={{ background:'var(--navy-light)', border:'1px solid var(--navy-border)', padding:'8px 12px', color:'var(--white-dim)', fontFamily:'var(--font-sans)', fontSize:11, letterSpacing:'1px', outline:'none' }}
-        >
-          <option value="all">{t('tx_all_cats')}</option>
-          {Object.entries(allCats).map(([k,v]) => (
-            <option key={k} value={k}>{lang === 'fr' ? v.label : v.labelEn}</option>
-          ))}
-        </select>
-      </div>
-
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>{t('dash_col_date')}</th>
-              <th>{t('dash_col_ref')}</th>
-              <th>{t('tx_col_client')}</th>
-              <th>{t('dash_col_desc')}</th>
-              <th>{t('dash_col_cat')}</th>
-              <th>{t('dash_col_by')}</th>
-              <th>{t('tx_col_type')}</th>
-              <th className="right">{t('dash_col_amount')}</th>
-              {isManager && <th className="right">{t('tx_col_actions')}</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={9} style={{ textAlign:'center', padding:40, color:'var(--muted)' }}>{t('dash_loading')}</td></tr>
-            ) : transactions.length === 0 ? (
-              <tr><td colSpan={9}>
-                <div className="empty-state">
-                  <p>{t('tx_empty')}</p>
-                  <span>{t('tx_empty_sub')}</span>
-                </div>
-              </td></tr>
-            ) : transactions.map(tx => (
-              <tr key={tx.id}>
-                <td className="td-muted">{formatDate(tx.date)}</td>
-                <td className="td-serif">{tx.reference}</td>
-                <td>
-                  {tx.type === 'income'
-                    ? <span style={{ color:'var(--white-dim)' }}>{tx.customer?.full_name || '—'}</span>
-                    : <span style={{ color:'var(--gold-dim)', fontSize:12 }}>{tx.worker_name || '—'}</span>
-                  }
-                </td>
-                <td style={{ color:'var(--white-dim)', maxWidth:200 }}>{tx.description || '—'}</td>
-                <td><span className={`badge ${getCatBadge(tx.category, tx.type)}`}>{getCatLabel(tx.category, tx.type)}</span></td>
-                <td className="td-muted">{tx.created_by_user?.full_name || '—'}</td>
-                <td>
-                  <span className={`badge ${tx.type === 'income' ? 'badge-income' : 'badge-expense'}`}>
-                    {tx.type === 'income' ? t('tx_badge_in') : t('tx_badge_out')}
-                  </span>
-                </td>
-                <td className="right">
-                  <span className={`td-amount ${tx.type}`}>
-                    {tx.type === 'expense' ? '−' : '+'}{formatAmount(tx.amount, tx.currency)}
-                  </span>
-                </td>
-                {isManager && (
-                  <td className="right">
-                    <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
-                      <button className="btn btn-outline btn-sm" onClick={() => { setEditing(tx); setShowModal(true) }}>{t('tx_edit')}</button>
-                      <button className="btn btn-danger btn-sm" onClick={() => handleDelete(tx)}>{t('tx_delete')}</button>
-                    </div>
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {showModal && (
-        <TransactionModal
-          initial={editing}
-          onClose={() => { setShowModal(false); setEditing(null) }}
-          onSaved={() => { setShowModal(false); setEditing(null); load(); show(editing ? t('tx_updated') : t('tx_saved')) }}
-        />
-      )}
-    </div>
+    </div>,
+    document.body
   )
 }
