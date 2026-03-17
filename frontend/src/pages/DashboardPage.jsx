@@ -184,7 +184,7 @@ export default function DashboardPage() {
                 <td className="td-serif">{tx.reference}</td>
                 <td>{tx.description || '—'}</td>
                 <td className="td-muted">{tx.created_by_user?.full_name || '—'}</td>
-                <td><span className={`badge ${getCatBadge(tx.category, tx.type)}`}>{getCatLabel(tx.category, tx.type)}</span></td>
+                <td><span className={`badge ${getCatBadge(tx.category, tx.type)}`}>{getCatLabel(tx.category, tx.type, lang)}</span></td>
                 <td className="right">
                   <span className={`td-amount ${tx.type}`}>
                     {tx.type === 'expense' ? '−' : '+'}{formatAmount(tx.amount, tx.currency)}
