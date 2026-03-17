@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react'
 import { reportsAPI, transactionsAPI } from '../api/endpoints'
-import { formatAmount, formatDate, EXPENSE_CATS, INCOME_CATS, todayISO } from '../api/utils'
+import { formatAmount, formatDate, EXPENSE_CATS, todayISO } from '../api/utils'
+import { useLang } from '../context/LanguageContext'
+import { TR } from '../api/translations'
 import { useToast } from '../hooks/useToast'
 
 export default function ReportsPage() {
+  const { lang } = useLang()
+  const t = k => TR[lang][k]
   const { show, ToastEl } = useToast()
   const [summary,   setSummary]   = useState(null)
   const [byCat,     setByCat]     = useState([])
@@ -16,7 +20,7 @@ export default function ReportsPage() {
   const [cashDate,  setCashDate]  = useState(todayISO())
   const [openBal,   setOpenBal]   = useState('')
   const [closeBal,  setCloseBal]  = useState('')
-  const [cashMode,  setCashMode]  = useState('open') // 'open' | 'close'
+  const [cashMode,  setCashMode]  = useState('open')
   const [cashLoading, setCashLoading] = useState(false)
 
   const load = async () => {
@@ -39,137 +43,140 @@ export default function ReportsPage() {
 
   useEffect(() => { load() }, [dateFrom, dateTo])
 
-  // ── PDF Export ─────────────────────────────────
   const exportPDF = async () => {
-    const { default: jsPDF } = await import('jspdf')
+    const { default: jsPDF }     = await import('jspdf')
     const { default: autoTable } = await import('jspdf-autotable')
-    const { data: txs } = await transactionsAPI.list({ limit: 1000, ...(dateFrom && { date_from: dateFrom }), ...(dateTo && { date_to: dateTo }) })
+    const { data: txs } = await transactionsAPI.list({ limit:1000, ...(dateFrom && { date_from:dateFrom }), ...(dateTo && { date_to:dateTo }) })
 
-    const doc = new jsPDF()
-    const gold = [201, 168, 76]
-    const navy = [11, 29, 58]
+    const doc   = new jsPDF()
+    const gold  = [201,168,76]
+    const navy  = [11,29,58]
 
-    // Header
     doc.setFillColor(...navy)
-    doc.rect(0, 0, 220, 30, 'F')
+    doc.rect(0,0,220,30,'F')
     doc.setTextColor(...gold)
     doc.setFontSize(18)
-    doc.setFont('helvetica', 'bold')
+    doc.setFont('helvetica','bold')
     doc.text("Diko's Assurances SARL", 14, 14)
     doc.setFontSize(10)
-    doc.setFont('helvetica', 'normal')
-    doc.text('Rapport Financier — Finance Tracker', 14, 22)
-    doc.setTextColor(150, 150, 150)
-    doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, 150, 22)
+    doc.setFont('helvetica','normal')
+    doc.text(lang === 'fr' ? 'Rapport Financier — Finance Tracker' : 'Financial Report — Finance Tracker', 14, 22)
+    doc.setTextColor(150,150,150)
+    doc.text(new Date().toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB'), 150, 22)
 
-    // Summary box
     doc.setTextColor(...navy)
     doc.setFontSize(11)
-    doc.setFont('helvetica', 'bold')
-    doc.text('Résumé', 14, 42)
+    doc.setFont('helvetica','bold')
+    doc.text(lang === 'fr' ? 'Résumé' : 'Summary', 14, 42)
+
     if (summary) {
       const rows = [
-        ['Entrées totales',    formatAmount(summary.total_income,   'XAF')],
-        ['Sorties totales',    formatAmount(summary.total_expenses, 'XAF')],
-        ['Solde net',          formatAmount(summary.net_balance,    'XAF')],
-        ['Dépenses personnel', formatAmount(summary.staff_spending, 'XAF')],
-        ['Nb. transactions',   summary.transaction_count.toString()],
+        [lang === 'fr' ? 'Entrées totales'    : 'Total income',    formatAmount(summary.total_income,   'XAF')],
+        [lang === 'fr' ? 'Sorties totales'    : 'Total outflows',  formatAmount(summary.total_expenses, 'XAF')],
+        [lang === 'fr' ? 'Solde net'          : 'Net balance',     formatAmount(summary.net_balance,    'XAF')],
+        [lang === 'fr' ? 'Dépenses personnel' : 'Staff spending',  formatAmount(summary.staff_spending, 'XAF')],
+        [lang === 'fr' ? 'Nb. transactions'   : 'Transactions',    summary.transaction_count.toString()],
       ]
       autoTable(doc, {
-        startY: 46, head: [['Indicateur', 'Valeur']], body: rows,
-        styles: { fontSize: 10, cellPadding: 4 },
-        headStyles: { fillColor: navy, textColor: gold, fontStyle: 'bold' },
-        alternateRowStyles: { fillColor: [245, 240, 232] },
-        margin: { left: 14, right: 14 },
+        startY:46,
+        head: [[lang === 'fr' ? 'Indicateur' : 'Indicator', lang === 'fr' ? 'Valeur' : 'Value']],
+        body: rows,
+        styles:{ fontSize:10, cellPadding:4 },
+        headStyles:{ fillColor:navy, textColor:gold, fontStyle:'bold' },
+        alternateRowStyles:{ fillColor:[245,240,232] },
+        margin:{ left:14, right:14 },
       })
     }
 
-    // Transactions table
     let y = doc.lastAutoTable?.finalY + 12 || 100
-    doc.setFont('helvetica', 'bold')
+    doc.setFont('helvetica','bold')
     doc.setFontSize(11)
-    doc.text('Détail des transactions', 14, y)
+    doc.text(lang === 'fr' ? 'Détail des transactions' : 'Transaction details', 14, y)
     autoTable(doc, {
       startY: y + 4,
-      head: [['Date', 'Référence', 'Description', 'Catégorie', 'Saisi par', 'Type', 'Montant']],
+      head: [[
+        lang === 'fr' ? 'Date' : 'Date',
+        lang === 'fr' ? 'Référence' : 'Reference',
+        lang === 'fr' ? 'Description' : 'Description',
+        lang === 'fr' ? 'Catégorie' : 'Category',
+        lang === 'fr' ? 'Saisi par' : 'Entered by',
+        lang === 'fr' ? 'Type' : 'Type',
+        lang === 'fr' ? 'Montant' : 'Amount',
+      ]],
       body: txs.map(tx => [
         formatDate(tx.date),
         tx.reference,
-        (tx.description || '').slice(0, 30),
+        (tx.description || '').slice(0,30),
         tx.category,
         tx.created_by_user?.full_name || '—',
-        tx.type === 'income' ? 'Entrée' : 'Sortie',
+        tx.type === 'income' ? (lang === 'fr' ? 'Entrée' : 'Income') : (lang === 'fr' ? 'Sortie' : 'Expense'),
         (tx.type === 'expense' ? '-' : '+') + formatAmount(tx.amount, tx.currency),
       ]),
-      styles: { fontSize: 8, cellPadding: 3 },
-      headStyles: { fillColor: navy, textColor: gold, fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [248, 246, 240] },
-      columnStyles: { 6: { halign: 'right' } },
-      margin: { left: 14, right: 14 },
+      styles:{ fontSize:8, cellPadding:3 },
+      headStyles:{ fillColor:navy, textColor:gold, fontStyle:'bold' },
+      alternateRowStyles:{ fillColor:[248,246,240] },
+      columnStyles:{ 6:{ halign:'right' } },
+      margin:{ left:14, right:14 },
     })
 
-    // Footer
     const pageCount = doc.getNumberOfPages()
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i)
       doc.setFontSize(8)
-      doc.setTextColor(150, 150, 150)
-      doc.text(`Page ${i} / ${pageCount}  —  Diko's Assurances SARL  —  Courtier agréé Chanas Assurances S.A.`, 14, doc.internal.pageSize.height - 8)
+      doc.setTextColor(150,150,150)
+      doc.text(`Page ${i} / ${pageCount}  —  Diko's Assurances SARL`, 14, doc.internal.pageSize.height - 8)
     }
 
-    doc.save(`dikos-finance-rapport-${todayISO()}.pdf`)
-    show('Rapport PDF téléchargé ✓')
+    doc.save(`dikos-finance-${todayISO()}.pdf`)
+    show(t('rep_exported_pdf'))
   }
 
-  // ── Excel Export ───────────────────────────────
   const exportExcel = async () => {
     const XLSX = await import('xlsx')
-    const { data: txs } = await transactionsAPI.list({ limit: 1000, ...(dateFrom && { date_from: dateFrom }), ...(dateTo && { date_to: dateTo }) })
+    const { data: txs } = await transactionsAPI.list({ limit:1000, ...(dateFrom && { date_from:dateFrom }), ...(dateTo && { date_to:dateTo }) })
 
     const rows = txs.map(tx => ({
-      'Date':         tx.date,
-      'Référence':    tx.reference,
-      'Type':         tx.type === 'income' ? 'Entrée' : 'Sortie',
-      'Catégorie':    tx.category,
-      'Description':  tx.description || '',
-      'Client':       tx.customer?.full_name || '',
-      'Collaborateur':tx.worker_name || '',
-      'Saisi par':    tx.created_by_user?.full_name || '',
-      'Montant':      tx.type === 'expense' ? -tx.amount : tx.amount,
-      'Devise':       tx.currency,
-      'Note':         tx.note || '',
+      [lang === 'fr' ? 'Date' : 'Date']:               tx.date,
+      [lang === 'fr' ? 'Référence' : 'Reference']:     tx.reference,
+      [lang === 'fr' ? 'Type' : 'Type']:               tx.type === 'income' ? (lang === 'fr' ? 'Entrée' : 'Income') : (lang === 'fr' ? 'Sortie' : 'Expense'),
+      [lang === 'fr' ? 'Catégorie' : 'Category']:      tx.category,
+      [lang === 'fr' ? 'Description' : 'Description']: tx.description || '',
+      [lang === 'fr' ? 'Client' : 'Client']:           tx.customer?.full_name || '',
+      [lang === 'fr' ? 'Collaborateur' : 'Staff']:     tx.worker_name || '',
+      [lang === 'fr' ? 'Saisi par' : 'Entered by']:    tx.created_by_user?.full_name || '',
+      [lang === 'fr' ? 'Montant' : 'Amount']:          tx.type === 'expense' ? -tx.amount : tx.amount,
+      [lang === 'fr' ? 'Devise' : 'Currency']:         tx.currency,
+      [lang === 'fr' ? 'Note' : 'Note']:               tx.note || '',
     }))
 
-    const ws   = XLSX.utils.json_to_sheet(rows)
-    const wb   = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Transactions')
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, lang === 'fr' ? 'Transactions' : 'Transactions')
 
-    // Summary sheet
     if (summary) {
       const sumRows = [
-        { Indicateur: 'Entrées totales',    Valeur: summary.total_income },
-        { Indicateur: 'Sorties totales',    Valeur: summary.total_expenses },
-        { Indicateur: 'Solde net',          Valeur: summary.net_balance },
-        { Indicateur: 'Dépenses personnel', Valeur: summary.staff_spending },
+        { [lang === 'fr' ? 'Indicateur' : 'Indicator']: lang === 'fr' ? 'Entrées totales'    : 'Total income',   [lang === 'fr' ? 'Valeur' : 'Value']: summary.total_income },
+        { [lang === 'fr' ? 'Indicateur' : 'Indicator']: lang === 'fr' ? 'Sorties totales'    : 'Total outflows', [lang === 'fr' ? 'Valeur' : 'Value']: summary.total_expenses },
+        { [lang === 'fr' ? 'Indicateur' : 'Indicator']: lang === 'fr' ? 'Solde net'          : 'Net balance',    [lang === 'fr' ? 'Valeur' : 'Value']: summary.net_balance },
+        { [lang === 'fr' ? 'Indicateur' : 'Indicator']: lang === 'fr' ? 'Dépenses personnel' : 'Staff spending', [lang === 'fr' ? 'Valeur' : 'Value']: summary.staff_spending },
       ]
       const ws2 = XLSX.utils.json_to_sheet(sumRows)
-      XLSX.utils.book_append_sheet(wb, ws2, 'Résumé')
+      XLSX.utils.book_append_sheet(wb, ws2, lang === 'fr' ? 'Résumé' : 'Summary')
     }
 
     XLSX.writeFile(wb, `dikos-finance-${todayISO()}.xlsx`)
-    show('Fichier Excel téléchargé ✓')
+    show(t('rep_exported_excel'))
   }
 
-  // ── Daily cash submit ──────────────────────────
   const submitCash = async () => {
     setCashLoading(true)
     try {
       if (cashMode === 'open') {
-        await reportsAPI.openDay({ date: cashDate, opening_balance: parseFloat(openBal), note: '' })
-        show('Caisse ouverte ✓')
+        await reportsAPI.openDay({ date:cashDate, opening_balance:parseFloat(openBal), note:'' })
+        show(t('cash_opened'))
       } else {
-        await reportsAPI.closeDay(cashDate, { closing_balance: parseFloat(closeBal) })
-        show('Caisse clôturée ✓')
+        await reportsAPI.closeDay(cashDate, { closing_balance:parseFloat(closeBal) })
+        show(t('cash_closed'))
       }
       setCashModal(false); setOpenBal(''); setCloseBal(''); load()
     } catch (e) {
@@ -179,25 +186,19 @@ export default function ReportsPage() {
     }
   }
 
-  const allCats = { ...INCOME_CATS, ...EXPENSE_CATS }
-
   return (
     <div className="page-content">
       {ToastEl}
 
       <div className="page-header">
-        <div className="page-eyebrow"><span className="eyebrow-line" />Analyse & exports</div>
+        <div className="page-eyebrow"><span className="eyebrow-line" />{t('rep_eyebrow')}</div>
         <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', flexWrap:'wrap', gap:16 }}>
-          <h1>Rapports <em>financiers</em></h1>
+          <h1>{t('rep_title')}</h1>
           <div style={{ display:'flex', gap:10 }}>
-            <button className="btn btn-outline" onClick={() => { setCashMode('open'); setCashModal(true) }}>
-              Ouvrir caisse
-            </button>
-            <button className="btn btn-outline" onClick={() => { setCashMode('close'); setCashModal(true) }}>
-              Clôturer caisse
-            </button>
-            <button className="btn btn-outline" onClick={exportExcel}>⬇ Excel</button>
-            <button className="btn btn-primary" onClick={exportPDF}>⬇ PDF</button>
+            <button className="btn btn-outline" onClick={() => { setCashMode('open'); setCashModal(true) }}>{t('rep_open_cash')}</button>
+            <button className="btn btn-outline" onClick={() => { setCashMode('close'); setCashModal(true) }}>{t('rep_close_cash')}</button>
+            <button className="btn btn-outline" onClick={exportExcel}>{t('rep_excel')}</button>
+            <button className="btn btn-primary" onClick={exportPDF}>{t('rep_pdf')}</button>
           </div>
         </div>
       </div>
@@ -205,16 +206,16 @@ export default function ReportsPage() {
       {/* Date filter */}
       <div style={{ display:'flex', gap:16, marginBottom:36, flexWrap:'wrap', alignItems:'flex-end' }}>
         <div className="form-group" style={{ marginBottom:0 }}>
-          <label>Du</label>
+          <label>{t('rep_date_from')}</label>
           <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ width:180 }} />
         </div>
         <div className="form-group" style={{ marginBottom:0 }}>
-          <label>Au</label>
+          <label>{t('rep_date_to')}</label>
           <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ width:180 }} />
         </div>
         {(dateFrom || dateTo) && (
           <button className="btn btn-outline btn-sm" onClick={() => { setDateFrom(''); setDateTo('') }}>
-            ✕ Réinitialiser
+            {t('rep_reset')}
           </button>
         )}
       </div>
@@ -223,46 +224,46 @@ export default function ReportsPage() {
       {summary && (
         <div className="summary-grid" style={{ marginBottom:40 }}>
           <div className="summary-card">
-            <div className="summary-label">Entrées totales</div>
-            <div className="summary-value positive">{formatAmount(summary.total_income, 'XAF')}</div>
+            <div className="summary-label">{t('dash_card_in')}</div>
+            <div className="summary-value positive">{formatAmount(summary.total_income,'XAF')}</div>
             <div className="summary-sub">{summary.income_count} transactions</div>
           </div>
           <div className="summary-card">
-            <div className="summary-label">Sorties totales</div>
-            <div className="summary-value negative">{formatAmount(summary.total_expenses, 'XAF')}</div>
+            <div className="summary-label">{t('dash_card_out')}</div>
+            <div className="summary-value negative">{formatAmount(summary.total_expenses,'XAF')}</div>
             <div className="summary-sub">{summary.expense_count} transactions</div>
           </div>
           <div className="summary-card">
-            <div className="summary-label">Solde net</div>
+            <div className="summary-label">{t('dash_card_bal')}</div>
             <div className={`summary-value ${summary.net_balance >= 0 ? 'gold' : 'negative'}`}>
-              {formatAmount(Math.abs(summary.net_balance), 'XAF')}
+              {formatAmount(Math.abs(summary.net_balance),'XAF')}
             </div>
-            <div className="summary-sub">{summary.net_balance >= 0 ? 'Excédent' : 'Déficit'}</div>
+            <div className="summary-sub">{summary.net_balance >= 0 ? t('dash_surplus') : t('dash_deficit')}</div>
           </div>
           <div className="summary-card">
-            <div className="summary-label">Dépenses personnel</div>
-            <div className="summary-value negative">{formatAmount(summary.staff_spending, 'XAF')}</div>
-            <div className="summary-sub">{summary.transaction_count} opérations</div>
+            <div className="summary-label">{t('dash_card_staff')}</div>
+            <div className="summary-value negative">{formatAmount(summary.staff_spending,'XAF')}</div>
+            <div className="summary-sub">{summary.transaction_count} {lang === 'fr' ? 'opérations' : 'operations'}</div>
           </div>
         </div>
       )}
 
-      {/* Category breakdown table */}
-      <div className="section-label">Dépenses par catégorie</div>
+      {/* Category breakdown */}
+      <div className="section-label">{t('rep_by_cat')}</div>
       <div className="table-wrap" style={{ marginBottom:40 }}>
         <table>
           <thead>
             <tr>
-              <th>Catégorie</th>
-              <th className="right">Transactions</th>
-              <th className="right">Total</th>
-              <th className="right">% du total</th>
-              <th style={{ width:200 }}>Proportion</th>
+              <th>{t('rep_col_cat')}</th>
+              <th className="right">{t('rep_col_txs')}</th>
+              <th className="right">{t('rep_col_total')}</th>
+              <th className="right">{t('rep_col_pct')}</th>
+              <th style={{ width:200 }}>{t('rep_col_bar')}</th>
             </tr>
           </thead>
           <tbody>
             {byCat.length === 0 ? (
-              <tr><td colSpan={5}><div className="empty-state"><p>Aucune donnée</p></div></td></tr>
+              <tr><td colSpan={5}><div className="empty-state"><p>{t('rep_no_data')}</p></div></td></tr>
             ) : byCat.map(c => {
               const def = EXPENSE_CATS[c.category] || EXPENSE_CATS.autre
               return (
@@ -270,7 +271,7 @@ export default function ReportsPage() {
                   <td>
                     <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                       <div style={{ width:8, height:8, background:def.color, flexShrink:0 }} />
-                      <span>{def.label}</span>
+                      <span>{lang === 'fr' ? def.label : def.labelEn}</span>
                     </div>
                   </td>
                   <td className="right td-muted">{c.count}</td>
@@ -288,21 +289,21 @@ export default function ReportsPage() {
         </table>
       </div>
 
-      {/* Worker breakdown table */}
-      <div className="section-label">Dépenses par collaborateur</div>
+      {/* Worker breakdown */}
+      <div className="section-label">{t('rep_by_worker')}</div>
       <div className="table-wrap" style={{ marginBottom:40 }}>
         <table>
           <thead>
             <tr>
-              <th>Collaborateur</th>
-              <th className="right">Transactions</th>
-              <th className="right">Total dépensé</th>
-              <th>Catégorie principale</th>
+              <th>{t('rep_col_worker')}</th>
+              <th className="right">{t('rep_col_txs')}</th>
+              <th className="right">{t('rep_col_total')}</th>
+              <th>{t('rep_col_top_cat')}</th>
             </tr>
           </thead>
           <tbody>
             {byWorker.length === 0 ? (
-              <tr><td colSpan={4}><div className="empty-state"><p>Aucune donnée</p></div></td></tr>
+              <tr><td colSpan={4}><div className="empty-state"><p>{t('rep_no_data')}</p></div></td></tr>
             ) : byWorker.map(w => {
               const topCat = w.categories[0]
               const def    = topCat ? (EXPENSE_CATS[topCat.category] || EXPENSE_CATS.autre) : null
@@ -311,9 +312,7 @@ export default function ReportsPage() {
                   <td><span style={{ fontFamily:'var(--font-serif)', fontSize:15, fontWeight:500 }}>{w.worker_name}</span></td>
                   <td className="right td-muted">{w.count}</td>
                   <td className="right"><span className="td-amount expense">{formatAmount(w.total,'XAF')}</span></td>
-                  <td>
-                    {def && <span className={`badge ${def.badge}`}>{def.label}</span>}
-                  </td>
+                  <td>{def && <span className={`badge ${def.badge}`}>{lang === 'fr' ? def.label : def.labelEn}</span>}</td>
                 </tr>
               )
             })}
@@ -322,21 +321,21 @@ export default function ReportsPage() {
       </div>
 
       {/* Daily cash register */}
-      <div className="section-label">Registre de caisse — 30 derniers jours</div>
+      <div className="section-label">{t('rep_cash_title')}</div>
       <div className="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Date</th>
-              <th className="right">Ouverture</th>
-              <th className="right">Clôture</th>
-              <th className="right">Écart</th>
-              <th>Statut</th>
+              <th>{t('dash_col_date')}</th>
+              <th className="right">{t('rep_cash_open_col')}</th>
+              <th className="right">{t('rep_cash_close_col')}</th>
+              <th className="right">{t('rep_cash_ecart')}</th>
+              <th>{t('rep_cash_status')}</th>
             </tr>
           </thead>
           <tbody>
             {dailyCash.length === 0 ? (
-              <tr><td colSpan={5}><div className="empty-state"><p>Aucune caisse enregistrée</p><span>Cliquez sur "Ouvrir caisse" pour commencer</span></div></td></tr>
+              <tr><td colSpan={5}><div className="empty-state"><p>{t('rep_cash_empty')}</p><span>{t('rep_cash_empty_sub')}</span></div></td></tr>
             ) : dailyCash.map(dc => {
               const ecart = dc.closing_balance != null ? dc.closing_balance - dc.opening_balance : null
               return (
@@ -353,8 +352,8 @@ export default function ReportsPage() {
                   </td>
                   <td>
                     {dc.closing_balance != null
-                      ? <span className="badge badge-income">Clôturée</span>
-                      : <span style={{ fontSize:10, color:'var(--gold)', letterSpacing:'1px', textTransform:'uppercase' }}>En cours</span>
+                      ? <span className="badge badge-income">{t('rep_cash_closed')}</span>
+                      : <span style={{ fontSize:10, color:'var(--gold)', letterSpacing:'1px', textTransform:'uppercase' }}>{t('rep_cash_ongoing')}</span>
                     }
                   </td>
                 </tr>
@@ -369,31 +368,28 @@ export default function ReportsPage() {
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setCashModal(false)}>
           <div className="modal">
             <button className="modal-close" onClick={() => setCashModal(false)}>×</button>
-            <div className="modal-eyebrow">Caisse journalière</div>
-            <h2>{cashMode === 'open' ? 'Ouvrir la caisse' : 'Clôturer la caisse'}</h2>
-
+            <div className="modal-eyebrow">{t('cash_eyebrow')}</div>
+            <h2>{cashMode === 'open' ? t('cash_title_open') : t('cash_title_close')}</h2>
             <div className="form-group">
-              <label>Date</label>
+              <label>{t('cash_date')}</label>
               <input type="date" value={cashDate} onChange={e => setCashDate(e.target.value)} />
             </div>
-
             {cashMode === 'open' ? (
               <div className="form-group">
-                <label>Solde d'ouverture (XAF)</label>
-                <input type="number" value={openBal} onChange={e => setOpenBal(e.target.value)} placeholder="Montant en caisse ce matin" min="0" />
+                <label>{t('cash_open_bal')}</label>
+                <input type="number" value={openBal} onChange={e => setOpenBal(e.target.value)} placeholder={t('cash_open_placeholder')} min="0" />
               </div>
             ) : (
               <div className="form-group">
-                <label>Solde de clôture (XAF)</label>
-                <input type="number" value={closeBal} onChange={e => setCloseBal(e.target.value)} placeholder="Montant en caisse ce soir" min="0" />
+                <label>{t('cash_close_bal')}</label>
+                <input type="number" value={closeBal} onChange={e => setCloseBal(e.target.value)} placeholder={t('cash_close_placeholder')} min="0" />
               </div>
             )}
-
             <div className="modal-actions">
               <button className="btn btn-primary" style={{ flex:1 }} onClick={submitCash} disabled={cashLoading}>
-                {cashLoading ? 'Enregistrement...' : cashMode === 'open' ? 'Ouvrir la caisse' : 'Clôturer la journée'}
+                {cashLoading ? t('cash_saving') : cashMode === 'open' ? t('cash_btn_open') : t('cash_btn_close')}
               </button>
-              <button className="btn btn-outline" onClick={() => setCashModal(false)}>Annuler</button>
+              <button className="btn btn-outline" onClick={() => setCashModal(false)}>{t('modal_cancel')}</button>
             </div>
           </div>
         </div>
