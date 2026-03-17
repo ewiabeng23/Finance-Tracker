@@ -110,7 +110,7 @@ export default function TransactionsPage() {
                   }
                 </td>
                 <td style={{ color: 'var(--white-dim)', maxWidth: 200 }}>{tx.description || '—'}</td>
-                <td><span className={`badge ${getCatBadge(tx.category, tx.type)}`}>{getCatLabel(tx.category, tx.type)}</span></td>
+                <td><span className={`badge ${getCatBadge(tx.category, tx.type)}`}>{getCatLabel(tx.category, tx.type, lang)}</span></td>
                 <td className="td-muted">{tx.created_by_user?.full_name || '—'}</td>
                 <td>
                   <span className={`badge ${tx.type === 'income' ? 'badge-income' : 'badge-expense'}`}>
