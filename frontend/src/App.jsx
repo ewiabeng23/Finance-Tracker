@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { LanguageProvider } from './context/LanguageContext'
 import Navbar        from './components/Navbar'
 import LoginPage     from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
@@ -9,7 +10,6 @@ import CustomersPage from './pages/CustomersPage'
 import StaffPage     from './pages/StaffPage'
 import ReportsPage   from './pages/ReportsPage'
 
-// Requires login
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
   if (loading) return (
@@ -22,7 +22,6 @@ function ProtectedRoute({ children }) {
   return user ? children : <Navigate to="/login" replace />
 }
 
-// Requires manager role
 function ManagerRoute({ children }) {
   const { user, isManager, loading } = useAuth()
   if (loading) return null
@@ -64,16 +63,18 @@ function AppLayout() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/*" element={
-            <ProtectedRoute>
-              <AppLayout />
-            </ProtectedRoute>
-          } />
-        </Routes>
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/*" element={
+              <ProtectedRoute>
+                <AppLayout />
+              </ProtectedRoute>
+            } />
+          </Routes>
+        </AuthProvider>
+      </LanguageProvider>
     </BrowserRouter>
   )
 }
