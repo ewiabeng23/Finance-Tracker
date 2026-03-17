@@ -30,9 +30,14 @@ export default function TransactionsPage() {
     if (catFilter !== 'all') params.category = catFilter
     if (dateFrom) params.date_from = dateFrom
     if (dateTo)   params.date_to   = dateTo
-    const { data } = await transactionsAPI.list(params)
-    setTransactions(data)
-    setLoading(false)
+    try {
+      const { data } = await transactionsAPI.list(params)
+      setTransactions(data)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [filter, search, catFilter, dateFrom, dateTo])
@@ -42,6 +47,15 @@ export default function TransactionsPage() {
     await transactionsAPI.delete(tx.id)
     show(t('tx_deleted'), 'success')
     load()
+  }
+
+  // Running balance calculation
+  const txsWithBalance = () => {
+    let balance = 0
+    return [...transactions].reverse().map(tx => {
+      balance += tx.type === 'income' ? tx.amount : -tx.amount
+      return { ...tx, runningBalance: balance }
+    }).reverse()
   }
 
   const generateInvoice = async (tx) => {
@@ -67,7 +81,6 @@ export default function TransactionsPage() {
     doc.setFont('helvetica', 'normal')
     doc.text(lang === 'fr' ? 'Courtier agréé — Chanas Assurances S.A.' : 'Accredited broker — Chanas Assurances S.A.', 42, 26)
     doc.text('Douala, Cameroun', 42, 33)
-
     doc.setTextColor(...gold)
     doc.setFontSize(22)
     doc.setFont('helvetica', 'bold')
@@ -87,7 +100,6 @@ export default function TransactionsPage() {
     doc.text(tx.customer?.full_name || '—', 20, 73)
     if (tx.customer?.phone) doc.text(tx.customer.phone, 20, 80)
     if (tx.customer?.email) doc.text(tx.customer.email, 20, 87)
-
     doc.setFont('helvetica', 'bold')
     doc.text(lang === 'fr' ? 'DATE' : 'DATE', 130, 65)
     doc.setFont('helvetica', 'normal')
@@ -110,7 +122,7 @@ export default function TransactionsPage() {
     doc.rect(14, 115, 182, 14, 'F')
     doc.setTextColor(...navy)
     doc.setFont('helvetica', 'normal')
-    doc.text((tx.description || '—').slice(0, 40), 20, 124)
+    doc.text(tx.description || '—', 20, 124)
     doc.text(getCatLabel(tx.category, tx.type, lang), 110, 124)
     doc.setFont('helvetica', 'bold')
     doc.text(formatAmount(tx.amount, tx.currency), 165, 124)
@@ -120,8 +132,8 @@ export default function TransactionsPage() {
     doc.setTextColor(...gold)
     doc.setFontSize(11)
     doc.setFont('helvetica', 'bold')
-    doc.text('TOTAL', 130, 151)
-    doc.text(formatAmount(tx.amount, tx.currency), 155, 151)
+    doc.text(lang === 'fr' ? 'TOTAL' : 'TOTAL', 130, 151)
+    doc.text(formatAmount(tx.amount, tx.currency), 165, 151)
 
     if (tx.note) {
       doc.setTextColor(120, 120, 120)
@@ -166,27 +178,25 @@ export default function TransactionsPage() {
     doc.setFontSize(9)
     doc.setFont('helvetica', 'normal')
     doc.text(lang === 'fr' ? 'Courtier agréé — Chanas Assurances S.A.' : 'Accredited broker — Chanas Assurances S.A.', 42, 26)
-
     doc.setTextColor(...red)
     doc.setFontSize(18)
     doc.setFont('helvetica', 'bold')
     doc.text(lang === 'fr' ? 'REÇU DE DÉPENSE' : 'EXPENSE RECEIPT', 110, 20)
-    doc.setFontSize(10)
+    doc.setFontSize(9)
     doc.setFont('helvetica', 'normal')
     doc.setTextColor(...white)
-    doc.text(`N° ${tx.reference}`, 130, 30)
+    doc.text(`N° ${tx.reference}`, 140, 30)
 
     doc.setFillColor(240, 237, 228)
     doc.rect(14, 55, 182, 55, 'F')
     doc.setTextColor(...navy)
     doc.setFontSize(10)
-
     const rows = [
       [lang === 'fr' ? 'Collaborateur' : 'Staff member', tx.worker_name || '—'],
-      [lang === 'fr' ? 'Date' : 'Date',                  formatDate(tx.date, lang)],
-      [lang === 'fr' ? 'Catégorie' : 'Category',         getCatLabel(tx.category, tx.type, lang)],
-      [lang === 'fr' ? 'Description' : 'Description',    (tx.description || '—').slice(0, 50)],
-      [lang === 'fr' ? 'Référence' : 'Reference',        tx.reference],
+      [lang === 'fr' ? 'Date' : 'Date', formatDate(tx.date, lang)],
+      [lang === 'fr' ? 'Catégorie' : 'Category', getCatLabel(tx.category, tx.type, lang)],
+      [lang === 'fr' ? 'Description' : 'Description', tx.description || '—'],
+      [lang === 'fr' ? 'Référence' : 'Reference', tx.reference],
     ]
     rows.forEach(([label, value], i) => {
       doc.setFont('helvetica', 'bold')
@@ -225,15 +235,7 @@ export default function TransactionsPage() {
   }
 
   const allCats = { ...INCOME_CATS, ...EXPENSE_CATS }
-
-  // Running balance — sorted by date ascending
-  const sortedForBalance = [...transactions].sort((a, b) => (a.date || '').localeCompare(b.date || ''))
-  let running = 0
-  const balanceMap = {}
-  sortedForBalance.forEach(tx => {
-    running += tx.type === 'income' ? tx.amount : -tx.amount
-    balanceMap[tx.id] = running
-  })
+  const txsBalanced = txsWithBalance()
 
   return (
     <div className="page-content">
@@ -249,10 +251,10 @@ export default function TransactionsPage() {
       </div>
 
       {/* Filters */}
-      <div className="filter-bar">
+      <div className="filter-bar" style={{ marginBottom:12 }}>
         <div className="filter-tabs">
-          {[['all', t('tx_filter_all')], ['income', t('tx_filter_in')], ['expense', t('tx_filter_out')]].map(([v, l]) => (
-            <button key={v} className={`filter-tab ${filter === v ? 'active' : ''}`} onClick={() => setFilter(v)}>{l}</button>
+          {[['all', t('tx_filter_all')], ['income', t('tx_filter_in')], ['expense', t('tx_filter_out')]].map(([v,l]) => (
+            <button key={v} className={`filter-tab ${filter===v?'active':''}`} onClick={() => setFilter(v)}>{l}</button>
           ))}
         </div>
         <div className="search-wrap">
@@ -264,14 +266,14 @@ export default function TransactionsPage() {
           style={{ background:'var(--navy-light)', border:'1px solid var(--navy-border)', padding:'8px 12px', color:'var(--white-dim)', fontFamily:'var(--font-sans)', fontSize:11, letterSpacing:'1px', outline:'none' }}
         >
           <option value="all">{t('tx_all_cats')}</option>
-          {Object.entries(allCats).map(([k, v]) => (
+          {Object.entries(allCats).map(([k,v]) => (
             <option key={k} value={k}>{lang === 'fr' ? v.label : v.labelEn}</option>
           ))}
         </select>
       </div>
 
       {/* Date range filter */}
-      <div style={{ display:'flex', gap:12, marginBottom:20, flexWrap:'wrap', alignItems:'flex-end' }}>
+      <div style={{ display:'flex', gap:16, marginBottom:24, flexWrap:'wrap', alignItems:'flex-end' }}>
         <div className="form-group" style={{ marginBottom:0 }}>
           <label style={{ fontSize:10, letterSpacing:'2px', textTransform:'uppercase', color:'var(--gold)' }}>
             {lang === 'fr' ? 'Du' : 'From'}
@@ -289,26 +291,11 @@ export default function TransactionsPage() {
             ✕ {lang === 'fr' ? 'Réinitialiser' : 'Reset'}
           </button>
         )}
-        {transactions.length > 0 && (
-          <div style={{ marginLeft:'auto', display:'flex', gap:24, fontSize:13 }}>
-            <span style={{ color:'var(--green)' }}>
-              ↑ {formatAmount(transactions.filter(tx => tx.type === 'income').reduce((a, tx) => a + tx.amount, 0), 'XAF')}
-            </span>
-            <span style={{ color:'var(--red)' }}>
-              ↓ {formatAmount(transactions.filter(tx => tx.type === 'expense').reduce((a, tx) => a + tx.amount, 0), 'XAF')}
-            </span>
-            <span style={{ color:'var(--gold)', fontFamily:'var(--font-serif)', fontSize:16 }}>
-              = {formatAmount(
-                  transactions.filter(tx => tx.type === 'income').reduce((a, tx) => a + tx.amount, 0) -
-                  transactions.filter(tx => tx.type === 'expense').reduce((a, tx) => a + tx.amount, 0),
-                  'XAF'
-                )}
-            </span>
-          </div>
-        )}
+        <div style={{ marginLeft:'auto', fontSize:12, color:'var(--muted)' }}>
+          {transactions.length} {lang === 'fr' ? 'transaction(s)' : 'transaction(s)'}
+        </div>
       </div>
 
-      {/* Table */}
       <div className="table-wrap">
         <table>
           <thead>
@@ -328,14 +315,14 @@ export default function TransactionsPage() {
           <tbody>
             {loading ? (
               <tr><td colSpan={10} style={{ textAlign:'center', padding:40, color:'var(--muted)' }}>{t('dash_loading')}</td></tr>
-            ) : transactions.length === 0 ? (
+            ) : txsBalanced.length === 0 ? (
               <tr><td colSpan={10}>
                 <div className="empty-state">
                   <p>{t('tx_empty')}</p>
                   <span>{t('tx_empty_sub')}</span>
                 </div>
               </td></tr>
-            ) : transactions.map(tx => (
+            ) : txsBalanced.map(tx => (
               <tr key={tx.id}>
                 <td className="td-muted">{formatDate(tx.date, lang)}</td>
                 <td className="td-serif">{tx.reference}</td>
@@ -360,22 +347,22 @@ export default function TransactionsPage() {
                 </td>
                 <td className="right">
                   <span style={{
-                    fontFamily:'var(--font-serif)', fontSize:15,
-                    color: balanceMap[tx.id] >= 0 ? 'var(--green)' : 'var(--red)'
+                    fontFamily:'var(--font-serif)', fontSize:15, fontWeight:500,
+                    color: tx.runningBalance >= 0 ? 'var(--green)' : 'var(--red)'
                   }}>
-                    {formatAmount(balanceMap[tx.id], 'XAF')}
+                    {formatAmount(tx.runningBalance, 'XAF')}
                   </span>
                 </td>
                 <td className="right">
-                  <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
+                  <div style={{ display:'flex', gap:5, justifyContent:'flex-end' }}>
                     {tx.type === 'income' && (
                       <button className="btn btn-outline btn-sm" onClick={() => generateInvoice(tx)}>
-                        {lang === 'fr' ? 'Facture' : 'Invoice'}
+                        {lang === 'fr' ? '📄 Facture' : '📄 Invoice'}
                       </button>
                     )}
                     {tx.type === 'expense' && (
                       <button className="btn btn-outline btn-sm" onClick={() => generateReceipt(tx)}>
-                        {lang === 'fr' ? 'Reçu' : 'Receipt'}
+                        {lang === 'fr' ? '🧾 Reçu' : '🧾 Receipt'}
                       </button>
                     )}
                     {isManager && (
@@ -402,3 +389,4 @@ export default function TransactionsPage() {
     </div>
   )
 }
+
