@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react'
 import { customersAPI } from '../api/endpoints'
 import { useAuth } from '../context/AuthContext'
+import { useLang } from '../context/LanguageContext'
+import { TR } from '../api/translations'
 import CustomerModal from '../components/CustomerModal'
 import { useToast } from '../hooks/useToast'
 
 export default function CustomersPage() {
   const { isManager } = useAuth()
+  const { lang } = useLang()
+  const t = k => TR[lang][k]
   const { show, ToastEl } = useToast()
   const [customers, setCustomers] = useState([])
   const [search,    setSearch]    = useState('')
@@ -19,11 +23,11 @@ export default function CustomersPage() {
     <div className="page-content">
       {ToastEl}
       <div className="page-header">
-        <div className="page-eyebrow"><span className="eyebrow-line" />Base clients</div>
+        <div className="page-eyebrow"><span className="eyebrow-line" />{t('cust_eyebrow')}</div>
         <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', flexWrap:'wrap', gap:16 }}>
-          <h1>Gestion des <em>clients</em></h1>
+          <h1>{t('cust_title')}</h1>
           <button className="btn btn-primary" onClick={() => { setEditing(null); setShowModal(true) }}>
-            + Nouveau client
+            + {t('cust_new')}
           </button>
         </div>
       </div>
@@ -31,23 +35,25 @@ export default function CustomersPage() {
       <div className="filter-bar">
         <div className="search-wrap">
           <span className="search-icon">⌕</span>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher un client..." style={{ width: 280 }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t('cust_search')} style={{ width:280 }} />
         </div>
-        <span style={{ fontSize:12, color:'var(--muted)' }}>{customers.length} client{customers.length!==1?'s':''}</span>
+        <span style={{ fontSize:12, color:'var(--muted)' }}>
+          {customers.length} {lang === 'fr' ? `client${customers.length !== 1 ? 's' : ''}` : `client${customers.length !== 1 ? 's' : ''}`}
+        </span>
       </div>
 
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px,1fr))', gap:16 }}>
         {customers.length === 0 ? (
           <div className="empty-state" style={{ gridColumn:'1/-1' }}>
-            <p>Aucun client trouvé</p>
-            <span>Ajoutez votre premier client</span>
+            <p>{t('cust_empty')}</p>
+            <span>{t('cust_empty_sub')}</span>
           </div>
         ) : customers.map(c => (
-          <div key={c.id} className="card card-sm" style={{ borderLeft:'3px solid var(--navy-border)', transition:'border-color .2s', cursor:'default' }}
+          <div key={c.id} className="card card-sm"
+            style={{ borderLeft:'3px solid var(--navy-border)', transition:'border-color .2s', cursor:'default' }}
             onMouseEnter={e => e.currentTarget.style.borderLeftColor='var(--gold-dim)'}
             onMouseLeave={e => e.currentTarget.style.borderLeftColor='var(--navy-border)'}
           >
-            {/* Avatar */}
             <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
               <div style={{
                 width:40, height:40, borderRadius:'50%', background:'rgba(201,168,76,0.12)',
@@ -67,7 +73,7 @@ export default function CustomersPage() {
             {isManager && (
               <button className="btn btn-outline btn-sm" style={{ marginTop:14 }}
                 onClick={() => { setEditing(c); setShowModal(true) }}>
-                Modifier
+                {t('cust_edit')}
               </button>
             )}
           </div>
@@ -78,7 +84,7 @@ export default function CustomersPage() {
         <CustomerModal
           initial={editing}
           onClose={() => { setShowModal(false); setEditing(null) }}
-          onSaved={() => { setShowModal(false); setEditing(null); load(); show(editing ? 'Client modifié ✓' : 'Client ajouté ✓') }}
+          onSaved={() => { setShowModal(false); setEditing(null); load(); show(editing ? t('cust_updated') : t('cust_added')) }}
         />
       )}
     </div>
