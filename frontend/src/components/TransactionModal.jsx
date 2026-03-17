@@ -12,7 +12,7 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
   const t = k => TR[lang][k]
   const isEdit = !!initial
 
-  const [type, setType] = useState(initial?.type || defaultType || 'income')
+  const [type,        setType]        = useState(initial?.type || defaultType || 'income')
   const [date,        setDate]        = useState(initial?.date || todayISO())
   const [reference,   setReference]   = useState(initial?.reference || genRef())
   const [amount,      setAmount]      = useState(initial?.amount || '')
@@ -76,7 +76,7 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
         <button
           onClick={onClose}
           style={{ position:'absolute', top:16, right:16, background:'none', border:'none', color:'var(--muted)', fontSize:22, cursor:'pointer', lineHeight:1 }}
-        >×</button>
+        >x</button>
 
         <div style={{ fontSize:10, letterSpacing:'2.5px', textTransform:'uppercase', color:'var(--gold)', marginBottom:8 }}>
           {isEdit ? t('modal_edit_eyebrow') : t('modal_new_eyebrow')}
@@ -85,7 +85,6 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
           {isEdit ? t('modal_edit_title') : t('modal_new_title')}
         </h2>
 
-        {/* Type toggle */}
         <div className="form-group">
           <label>{t('modal_type')}</label>
           <div className="type-toggle">
@@ -168,7 +167,7 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
           <textarea rows={2} value={note} onChange={e => setNote(e.target.value)} placeholder={t('modal_note_placeholder')} />
         </div>
 
-        {error && <p style={{ fontSize:12, color:'var(--red)', marginBottom:12 }}>⚠ {error}</p>}
+        {error && <p style={{ fontSize:12, color:'var(--red)', marginBottom:12 }}>x {error}</p>}
 
         <div style={{ display:'flex', gap:12, marginTop:8 }}>
           <button className="btn btn-primary" style={{ flex:1 }} onClick={submit} disabled={loading}>
