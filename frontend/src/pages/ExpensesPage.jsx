@@ -3,11 +3,15 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { reportsAPI, transactionsAPI } from '../api/endpoints'
 import { formatAmount, formatDate, EXPENSE_CATS } from '../api/utils'
 import { useAuth } from '../context/AuthContext'
+import { useLang } from '../context/LanguageContext'
+import { TR } from '../api/translations'
 import TransactionModal from '../components/TransactionModal'
 import { useToast } from '../hooks/useToast'
 
 export default function ExpensesPage() {
   const { isManager } = useAuth()
+  const { lang } = useLang()
+  const t = k => TR[lang][k]
   const { show, ToastEl } = useToast()
   const [byCat,     setByCat]     = useState([])
   const [byWorker,  setByWorker]  = useState([])
@@ -22,7 +26,7 @@ export default function ExpensesPage() {
     const [catRes, workerRes, txRes] = await Promise.all([
       reportsAPI.byCategory(),
       reportsAPI.byWorker(),
-      transactionsAPI.list({ type: 'expense', limit: 200 }),
+      transactionsAPI.list({ type:'expense', limit:200 }),
     ])
     setByCat(catRes.data)
     setByWorker(workerRes.data)
@@ -33,10 +37,10 @@ export default function ExpensesPage() {
   useEffect(() => { load() }, [])
 
   const handleDelete = async tx => {
-    if (!window.confirm(`Supprimer ${tx.reference} ?`)) return
-    const { transactionsAPI: tAPI } = await import('../api/endpoints')
-    await tAPI.delete(tx.id)
-    show('Supprimée', 'success'); load()
+    if (!window.confirm(`${t('tx_confirm_del')} ${tx.reference}?`)) return
+    await transactionsAPI.delete(tx.id)
+    show(t('tx_deleted'), 'success')
+    load()
   }
 
   const totalExp = byCat.reduce((a, c) => a + c.total, 0)
@@ -46,36 +50,36 @@ export default function ExpensesPage() {
     <div className="page-content">
       {ToastEl}
       <div className="page-header">
-        <div className="page-eyebrow"><span className="eyebrow-line" />Analyse des dépenses</div>
+        <div className="page-eyebrow"><span className="eyebrow-line" />{t('exp_eyebrow')}</div>
         <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', flexWrap:'wrap', gap:16 }}>
-          <h1>Dépenses du <em>personnel</em></h1>
+          <h1>{t('exp_title')}</h1>
           <button className="btn btn-primary" onClick={() => { setEditing(null); setShowModal(true) }}>
-            + Nouvelle dépense
+            + {t('exp_new')}
           </button>
         </div>
       </div>
 
-      {/* Summary row */}
-      <div className="summary-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)' }}>
+      {/* Summary */}
+      <div className="summary-grid" style={{ gridTemplateColumns:'repeat(3,1fr)' }}>
         <div className="summary-card">
-          <div className="summary-label">Total dépenses</div>
+          <div className="summary-label">{t('exp_card_total')}</div>
           <div className="summary-value negative">{formatAmount(totalExp, 'XAF')}</div>
           <div className="summary-sub">{expenses.length} transactions</div>
         </div>
         <div className="summary-card">
-          <div className="summary-label">Catégorie principale</div>
-          <div className="summary-value white">{byCat[0] ? (EXPENSE_CATS[byCat[0].category]?.label || byCat[0].category) : '—'}</div>
-          <div className="summary-sub">{byCat[0] ? byCat[0].percent + '% du total' : '—'}</div>
+          <div className="summary-label">{t('exp_card_top_cat')}</div>
+          <div className="summary-value white">{byCat[0] ? (lang === 'fr' ? EXPENSE_CATS[byCat[0].category]?.label : EXPENSE_CATS[byCat[0].category]?.labelEn) || byCat[0].category : '—'}</div>
+          <div className="summary-sub">{byCat[0] ? byCat[0].percent + '% ' + t('exp_of_total') : '—'}</div>
         </div>
         <div className="summary-card">
-          <div className="summary-label">Principal dépensier</div>
+          <div className="summary-label">{t('exp_card_top_worker')}</div>
           <div className="summary-value white">{byWorker[0]?.worker_name || '—'}</div>
           <div className="summary-sub">{byWorker[0] ? formatAmount(byWorker[0].total, 'XAF') : '—'}</div>
         </div>
       </div>
 
       {/* Pie chart + legend */}
-      <div className="section-label">Répartition par catégorie</div>
+      <div className="section-label">{t('exp_breakdown')}</div>
       {byCat.length > 0 && (
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, marginBottom:40 }}>
           <div className="card" style={{ height:280 }}>
@@ -88,7 +92,7 @@ export default function ExpensesPage() {
                 </Pie>
                 <Tooltip
                   contentStyle={{ background:'var(--navy-mid)', border:'1px solid var(--navy-border)', fontSize:12 }}
-                  formatter={(v, name) => [formatAmount(v,'XAF'), EXPENSE_CATS[name]?.label || name]}
+                  formatter={(v, name) => [formatAmount(v,'XAF'), lang === 'fr' ? EXPENSE_CATS[name]?.label : EXPENSE_CATS[name]?.labelEn || name]}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -97,11 +101,12 @@ export default function ExpensesPage() {
             {byCat.map(c => {
               const def = EXPENSE_CATS[c.category] || EXPENSE_CATS.autre
               return (
-                <div key={c.category} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 12px', border:'1px solid var(--navy-border)', cursor:'pointer', background: catFilter===c.category ? 'var(--white-faint)' : '' }}
+                <div key={c.category}
+                  style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 12px', border:'1px solid var(--navy-border)', cursor:'pointer', background: catFilter===c.category ? 'var(--white-faint)' : '' }}
                   onClick={() => setCatFilter(catFilter === c.category ? 'all' : c.category)}>
                   <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                     <div style={{ width:10, height:10, background:def.color, flexShrink:0 }} />
-                    <span style={{ fontSize:12, color:'var(--white-dim)' }}>{def.label}</span>
+                    <span style={{ fontSize:12, color:'var(--white-dim)' }}>{lang === 'fr' ? def.label : def.labelEn}</span>
                   </div>
                   <span style={{ fontFamily:'var(--font-serif)', fontSize:18, color:'var(--gold)', fontWeight:500 }}>{c.percent}%</span>
                 </div>
@@ -112,11 +117,11 @@ export default function ExpensesPage() {
       )}
 
       {/* Per-worker cards */}
-      <div className="section-label">Par collaborateur</div>
+      <div className="section-label">{t('exp_by_worker')}</div>
       {byWorker.length === 0 ? (
         <div className="empty-state" style={{ marginBottom:40 }}>
-          <p>Aucune dépense enregistrée</p>
-          <span>Ajoutez une sortie avec un collaborateur pour voir l'analyse</span>
+          <p>{t('exp_empty')}</p>
+          <span>{t('exp_empty_sub')}</span>
         </div>
       ) : (
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px,1fr))', gap:16, marginBottom:40 }}>
@@ -124,20 +129,22 @@ export default function ExpensesPage() {
             <div key={w.worker_name} className="card" style={{ borderLeft:'3px solid var(--gold)', paddingLeft:20 }}>
               <div style={{ fontFamily:'var(--font-serif)', fontSize:18, fontWeight:500, marginBottom:2 }}>{w.worker_name}</div>
               <div style={{ fontSize:10, letterSpacing:'1.5px', textTransform:'uppercase', color:'var(--muted)', marginBottom:14 }}>
-                {w.count} transaction{w.count>1?'s':''}
+                {w.count} {w.count > 1 ? t('exp_transactions_pl') : t('exp_transactions')}
               </div>
               <div style={{ fontFamily:'var(--font-serif)', fontSize:26, color:'var(--red)', fontWeight:500, marginBottom:4 }}>
                 {formatAmount(w.total,'XAF')}
               </div>
               <div style={{ fontSize:11, color:'var(--muted)', marginBottom:14 }}>
-                {totalExp > 0 ? Math.round(w.total/totalExp*100) + '% du total' : ''}
+                {totalExp > 0 ? Math.round(w.total/totalExp*100) + '% ' + t('exp_of_total') : ''}
               </div>
               <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                 {w.categories.slice(0,4).map(c => {
                   const def = EXPENSE_CATS[c.category] || EXPENSE_CATS.autre
                   return (
                     <div key={c.category} style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <span style={{ fontSize:10, color:'var(--muted)', width:72, textTransform:'uppercase', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>{def.label.slice(0,10)}</span>
+                      <span style={{ fontSize:10, color:'var(--muted)', width:72, textTransform:'uppercase', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>
+                        {(lang === 'fr' ? def.label : def.labelEn).slice(0,10)}
+                      </span>
                       <div style={{ flex:1, height:3, background:'var(--navy-border)' }}>
                         <div style={{ width:c.percent+'%', height:'100%', background:def.color }} />
                       </div>
@@ -153,10 +160,10 @@ export default function ExpensesPage() {
 
       {/* Expense log */}
       <div className="section-label">
-        Journal des dépenses
+        {t('exp_log')}
         {catFilter !== 'all' && (
           <button className="btn btn-outline btn-sm" onClick={() => setCatFilter('all')} style={{ marginLeft:8 }}>
-            ✕ {EXPENSE_CATS[catFilter]?.label}
+            ✕ {lang === 'fr' ? EXPENSE_CATS[catFilter]?.label : EXPENSE_CATS[catFilter]?.labelEn}
           </button>
         )}
       </div>
@@ -164,19 +171,19 @@ export default function ExpensesPage() {
         <table>
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Collaborateur</th>
-              <th>Description</th>
-              <th>Catégorie</th>
-              <th className="right">Montant</th>
-              {isManager && <th className="right">Actions</th>}
+              <th>{t('dash_col_date')}</th>
+              <th>{t('exp_col_worker')}</th>
+              <th>{t('exp_col_desc')}</th>
+              <th>{t('dash_col_cat')}</th>
+              <th className="right">{t('dash_col_amount')}</th>
+              {isManager && <th className="right">{t('tx_col_actions')}</th>}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} style={{ textAlign:'center', padding:40, color:'var(--muted)' }}>Chargement...</td></tr>
+              <tr><td colSpan={6} style={{ textAlign:'center', padding:40, color:'var(--muted)' }}>{t('dash_loading')}</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={6}><div className="empty-state"><p>Aucune dépense</p></div></td></tr>
+              <tr><td colSpan={6}><div className="empty-state"><p>{t('exp_empty')}</p></div></td></tr>
             ) : filtered.map(tx => {
               const def = EXPENSE_CATS[tx.category] || EXPENSE_CATS.autre
               return (
@@ -184,13 +191,13 @@ export default function ExpensesPage() {
                   <td className="td-muted">{formatDate(tx.date)}</td>
                   <td><span style={{ color:'var(--gold-dim)', fontSize:13 }}>{tx.worker_name || '—'}</span></td>
                   <td style={{ color:'var(--white-dim)' }}>{tx.description || '—'}</td>
-                  <td><span className={`badge ${def.badge}`}>{def.label}</span></td>
+                  <td><span className={`badge ${def.badge}`}>{lang === 'fr' ? def.label : def.labelEn}</span></td>
                   <td className="right"><span className="td-amount expense">−{formatAmount(tx.amount, tx.currency)}</span></td>
                   {isManager && (
                     <td className="right">
                       <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
-                        <button className="btn btn-outline btn-sm" onClick={() => { setEditing(tx); setShowModal(true) }}>Modifier</button>
-                        <button className="btn btn-danger btn-sm" onClick={() => handleDelete(tx)}>Suppr.</button>
+                        <button className="btn btn-outline btn-sm" onClick={() => { setEditing(tx); setShowModal(true) }}>{t('tx_edit')}</button>
+                        <button className="btn btn-danger btn-sm" onClick={() => handleDelete(tx)}>{t('tx_delete')}</button>
                       </div>
                     </td>
                   )}
@@ -203,9 +210,9 @@ export default function ExpensesPage() {
 
       {showModal && (
         <TransactionModal
-          initial={editing || { type: 'expense' }}
+          initial={editing || { type:'expense' }}
           onClose={() => { setShowModal(false); setEditing(null) }}
-          onSaved={() => { setShowModal(false); setEditing(null); load(); show('Dépense enregistrée ✓') }}
+          onSaved={() => { setShowModal(false); setEditing(null); load(); show(t('tx_saved')) }}
         />
       )}
     </div>
