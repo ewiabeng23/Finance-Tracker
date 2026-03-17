@@ -28,9 +28,9 @@ export function formatAmount(amount, currency = 'XAF') {
   return (sym[currency] || '') + n.toLocaleString('fr-FR')
 }
 
-export function formatDate(d) {
+export function formatDate(d, lang = 'fr') {
   if (!d) return '—'
-  return new Date(d + 'T12:00:00').toLocaleDateString('fr-FR', {
+  return new Date(d + 'T12:00:00').toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB', {
     day: '2-digit', month: 'short', year: 'numeric'
   })
 }
@@ -43,14 +43,15 @@ export function genRef(prefix = 'TX') {
   return `${prefix}-${Date.now().toString().slice(-7)}`
 }
 
-// ── Category helpers ──────────────────────────────
+// ── Category helpers — accept lang param ──────────
 export function getCatDef(category, type) {
   if (type === 'income') return INCOME_CATS[category] || INCOME_CATS.autre
   return EXPENSE_CATS[category] || EXPENSE_CATS.autre
 }
 
-export function getCatLabel(category, type) {
-  return getCatDef(category, type).label
+export function getCatLabel(category, type, lang = 'fr') {
+  const def = getCatDef(category, type)
+  return lang === 'fr' ? def.label : (def.labelEn || def.label)
 }
 
 export function getCatBadge(category, type) {
