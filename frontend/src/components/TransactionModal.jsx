@@ -6,13 +6,13 @@ import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LanguageContext'
 import { TR } from '../api/translations'
 
-export default function TransactionModal({ onClose, onSaved, initial = null }) {
+export default function TransactionModal({ onClose, onSaved, initial = null, defaultType = 'income' }) {
   const { isManager, user } = useAuth()
   const { lang } = useLang()
   const t = k => TR[lang][k]
   const isEdit = !!initial
 
-  const [type,        setType]        = useState(initial?.type || 'income')
+  const [type, setType] = useState(initial?.type || defaultType || 'income')
   const [date,        setDate]        = useState(initial?.date || todayISO())
   const [reference,   setReference]   = useState(initial?.reference || genRef())
   const [amount,      setAmount]      = useState(initial?.amount || '')
