@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { reportsAPI, transactionsAPI } from '../api/endpoints'
 import { formatAmount, formatDate, EXPENSE_CATS, todayISO } from '../api/utils'
 import { useLang } from '../context/LanguageContext'
@@ -9,36 +10,42 @@ export default function ReportsPage() {
   const { lang } = useLang()
   const t = k => TR[lang][k]
   const { show, ToastEl } = useToast()
-  const [summary,   setSummary]   = useState(null)
-  const [byCat,     setByCat]     = useState([])
-  const [byWorker,  setByWorker]  = useState([])
-  const [dailyCash, setDailyCash] = useState([])
-  const [dateFrom,  setDateFrom]  = useState('')
-  const [dateTo,    setDateTo]    = useState('')
-  const [loading,   setLoading]   = useState(true)
-  const [cashModal, setCashModal] = useState(false)
-  const [cashDate,  setCashDate]  = useState(todayISO())
-  const [openBal,   setOpenBal]   = useState('')
-  const [closeBal,  setCloseBal]  = useState('')
-  const [cashMode,  setCashMode]  = useState('open')
+  const [summary,     setSummary]     = useState(null)
+  const [byCat,       setByCat]       = useState([])
+  const [byWorker,    setByWorker]    = useState([])
+  const [dailyCash,   setDailyCash]   = useState([])
+  const [dateFrom,    setDateFrom]    = useState('')
+  const [dateTo,      setDateTo]      = useState('')
+  const [loading,     setLoading]     = useState(true)
+  const [cashModal,   setCashModal]   = useState(false)
+  const [cashDate,    setCashDate]    = useState(todayISO())
+  const [openBal,     setOpenBal]     = useState('')
+  const [closeBal,    setCloseBal]    = useState('')
+  const [cashMode,    setCashMode]    = useState('open')
   const [cashLoading, setCashLoading] = useState(false)
+  const [cashError,   setCashError]   = useState('')
 
   const load = async () => {
     setLoading(true)
     const params = {}
     if (dateFrom) params.date_from = dateFrom
     if (dateTo)   params.date_to   = dateTo
-    const [sumRes, catRes, workerRes, cashRes] = await Promise.all([
-      reportsAPI.summary(params),
-      reportsAPI.byCategory(params),
-      reportsAPI.byWorker(params),
-      reportsAPI.dailyCash(),
-    ])
-    setSummary(sumRes.data)
-    setByCat(catRes.data)
-    setByWorker(workerRes.data)
-    setDailyCash(cashRes.data)
-    setLoading(false)
+    try {
+      const [sumRes, catRes, workerRes, cashRes] = await Promise.all([
+        reportsAPI.summary(params),
+        reportsAPI.byCategory(params),
+        reportsAPI.byWorker(params),
+        reportsAPI.dailyCash(),
+      ])
+      setSummary(sumRes.data)
+      setByCat(catRes.data)
+      setByWorker(workerRes.data)
+      setDailyCash(cashRes.data)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [dateFrom, dateTo])
@@ -46,100 +53,99 @@ export default function ReportsPage() {
   const exportPDF = async () => {
     const { default: jsPDF }     = await import('jspdf')
     const { default: autoTable } = await import('jspdf-autotable')
-    const { data: txs } = await transactionsAPI.list({ limit:1000, ...(dateFrom && { date_from:dateFrom }), ...(dateTo && { date_to:dateTo }) })
+    const { data: txs } = await transactionsAPI.list({
+      limit: 1000,
+      ...(dateFrom && { date_from: dateFrom }),
+      ...(dateTo   && { date_to:   dateTo }),
+    })
 
-    const doc   = new jsPDF()
-    const gold  = [201,168,76]
-    const navy  = [11,29,58]
+    const doc  = new jsPDF()
+    const gold = [201, 168, 76]
+    const navy = [11, 29, 58]
 
     doc.setFillColor(...navy)
-    doc.rect(0,0,220,30,'F')
+    doc.rect(0, 0, 220, 30, 'F')
     doc.setTextColor(...gold)
     doc.setFontSize(18)
-    doc.setFont('helvetica','bold')
+    doc.setFont('helvetica', 'bold')
     doc.text("Diko's Assurances SARL", 14, 14)
     doc.setFontSize(10)
-    doc.setFont('helvetica','normal')
-    doc.text(lang === 'fr' ? 'Rapport Financier — Finance Tracker' : 'Financial Report — Finance Tracker', 14, 22)
-    doc.setTextColor(150,150,150)
+    doc.setFont('helvetica', 'normal')
+    doc.text(lang === 'fr' ? 'Rapport Financier' : 'Financial Report', 14, 22)
+    doc.setTextColor(150, 150, 150)
     doc.text(new Date().toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB'), 150, 22)
 
-    doc.setTextColor(...navy)
-    doc.setFontSize(11)
-    doc.setFont('helvetica','bold')
-    doc.text(lang === 'fr' ? 'Résumé' : 'Summary', 14, 42)
-
     if (summary) {
-      const rows = [
-        [lang === 'fr' ? 'Entrées totales'    : 'Total income',    formatAmount(summary.total_income,   'XAF')],
-        [lang === 'fr' ? 'Sorties totales'    : 'Total outflows',  formatAmount(summary.total_expenses, 'XAF')],
-        [lang === 'fr' ? 'Solde net'          : 'Net balance',     formatAmount(summary.net_balance,    'XAF')],
-        [lang === 'fr' ? 'Dépenses personnel' : 'Staff spending',  formatAmount(summary.staff_spending, 'XAF')],
-        [lang === 'fr' ? 'Nb. transactions'   : 'Transactions',    summary.transaction_count.toString()],
-      ]
+      doc.setTextColor(...navy)
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'bold')
+      doc.text(lang === 'fr' ? 'Resume' : 'Summary', 14, 42)
       autoTable(doc, {
-        startY:46,
+        startY: 46,
         head: [[lang === 'fr' ? 'Indicateur' : 'Indicator', lang === 'fr' ? 'Valeur' : 'Value']],
-        body: rows,
-        styles:{ fontSize:10, cellPadding:4 },
-        headStyles:{ fillColor:navy, textColor:gold, fontStyle:'bold' },
-        alternateRowStyles:{ fillColor:[245,240,232] },
-        margin:{ left:14, right:14 },
+        body: [
+          [lang === 'fr' ? 'Entrees totales'    : 'Total income',    formatAmount(summary.total_income,   'XAF')],
+          [lang === 'fr' ? 'Sorties totales'    : 'Total outflows',  formatAmount(summary.total_expenses, 'XAF')],
+          [lang === 'fr' ? 'Solde net'          : 'Net balance',     formatAmount(summary.net_balance,    'XAF')],
+          [lang === 'fr' ? 'Depenses personnel' : 'Staff spending',  formatAmount(summary.staff_spending, 'XAF')],
+          [lang === 'fr' ? 'Nb. transactions'   : 'Transactions',    summary.transaction_count.toString()],
+        ],
+        styles: { fontSize: 10, cellPadding: 4 },
+        headStyles: { fillColor: navy, textColor: gold, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245, 240, 232] },
+        margin: { left: 14, right: 14 },
       })
     }
 
-    let y = doc.lastAutoTable?.finalY + 12 || 100
-    doc.setFont('helvetica','bold')
+    let y = (doc.lastAutoTable?.finalY || 90) + 12
+    doc.setFont('helvetica', 'bold')
     doc.setFontSize(11)
-    doc.text(lang === 'fr' ? 'Détail des transactions' : 'Transaction details', 14, y)
+    doc.setTextColor(...navy)
+    doc.text(lang === 'fr' ? 'Detail des transactions' : 'Transaction details', 14, y)
     autoTable(doc, {
       startY: y + 4,
-      head: [[
-        lang === 'fr' ? 'Date' : 'Date',
-        lang === 'fr' ? 'Référence' : 'Reference',
-        lang === 'fr' ? 'Description' : 'Description',
-        lang === 'fr' ? 'Catégorie' : 'Category',
-        lang === 'fr' ? 'Saisi par' : 'Entered by',
-        lang === 'fr' ? 'Type' : 'Type',
-        lang === 'fr' ? 'Montant' : 'Amount',
-      ]],
+      head: [['Date', lang === 'fr' ? 'Reference' : 'Reference', 'Description', lang === 'fr' ? 'Categorie' : 'Category', lang === 'fr' ? 'Saisi par' : 'Entered by', 'Type', lang === 'fr' ? 'Montant' : 'Amount']],
       body: txs.map(tx => [
-        formatDate(tx.date),
+        formatDate(tx.date, lang),
         tx.reference,
-        (tx.description || '').slice(0,30),
+        (tx.description || '').slice(0, 30),
         tx.category,
-        tx.created_by_user?.full_name || '—',
-        tx.type === 'income' ? (lang === 'fr' ? 'Entrée' : 'Income') : (lang === 'fr' ? 'Sortie' : 'Expense'),
+        tx.created_by_user?.full_name || '-',
+        tx.type === 'income' ? (lang === 'fr' ? 'Entree' : 'Income') : (lang === 'fr' ? 'Sortie' : 'Expense'),
         (tx.type === 'expense' ? '-' : '+') + formatAmount(tx.amount, tx.currency),
       ]),
-      styles:{ fontSize:8, cellPadding:3 },
-      headStyles:{ fillColor:navy, textColor:gold, fontStyle:'bold' },
-      alternateRowStyles:{ fillColor:[248,246,240] },
-      columnStyles:{ 6:{ halign:'right' } },
-      margin:{ left:14, right:14 },
+      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fillColor: navy, textColor: gold, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 246, 240] },
+      columnStyles: { 6: { halign: 'right' } },
+      margin: { left: 14, right: 14 },
     })
 
     const pageCount = doc.getNumberOfPages()
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i)
       doc.setFontSize(8)
-      doc.setTextColor(150,150,150)
-      doc.text(`Page ${i} / ${pageCount}  —  Diko's Assurances SARL`, 14, doc.internal.pageSize.height - 8)
+      doc.setTextColor(150, 150, 150)
+      doc.text(`Page ${i} / ${pageCount}  -  Diko's Assurances SARL`, 14, doc.internal.pageSize.height - 8)
     }
 
-    doc.save(`dikos-finance-${todayISO()}.pdf`)
+    doc.save('dikos-finance-' + todayISO() + '.pdf')
     show(t('rep_exported_pdf'))
   }
 
   const exportExcel = async () => {
     const XLSX = await import('xlsx')
-    const { data: txs } = await transactionsAPI.list({ limit:1000, ...(dateFrom && { date_from:dateFrom }), ...(dateTo && { date_to:dateTo }) })
+    const { data: txs } = await transactionsAPI.list({
+      limit: 1000,
+      ...(dateFrom && { date_from: dateFrom }),
+      ...(dateTo   && { date_to:   dateTo }),
+    })
 
     const rows = txs.map(tx => ({
       [lang === 'fr' ? 'Date' : 'Date']:               tx.date,
-      [lang === 'fr' ? 'Référence' : 'Reference']:     tx.reference,
-      [lang === 'fr' ? 'Type' : 'Type']:               tx.type === 'income' ? (lang === 'fr' ? 'Entrée' : 'Income') : (lang === 'fr' ? 'Sortie' : 'Expense'),
-      [lang === 'fr' ? 'Catégorie' : 'Category']:      tx.category,
+      [lang === 'fr' ? 'Reference' : 'Reference']:     tx.reference,
+      [lang === 'fr' ? 'Type' : 'Type']:               tx.type === 'income' ? (lang === 'fr' ? 'Entree' : 'Income') : (lang === 'fr' ? 'Sortie' : 'Expense'),
+      [lang === 'fr' ? 'Categorie' : 'Category']:      tx.category,
       [lang === 'fr' ? 'Description' : 'Description']: tx.description || '',
       [lang === 'fr' ? 'Client' : 'Client']:           tx.customer?.full_name || '',
       [lang === 'fr' ? 'Collaborateur' : 'Staff']:     tx.worker_name || '',
@@ -151,36 +157,62 @@ export default function ReportsPage() {
 
     const ws = XLSX.utils.json_to_sheet(rows)
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, lang === 'fr' ? 'Transactions' : 'Transactions')
+    XLSX.utils.book_append_sheet(wb, ws, 'Transactions')
 
     if (summary) {
       const sumRows = [
-        { [lang === 'fr' ? 'Indicateur' : 'Indicator']: lang === 'fr' ? 'Entrées totales'    : 'Total income',   [lang === 'fr' ? 'Valeur' : 'Value']: summary.total_income },
+        { [lang === 'fr' ? 'Indicateur' : 'Indicator']: lang === 'fr' ? 'Entrees totales'    : 'Total income',   [lang === 'fr' ? 'Valeur' : 'Value']: summary.total_income },
         { [lang === 'fr' ? 'Indicateur' : 'Indicator']: lang === 'fr' ? 'Sorties totales'    : 'Total outflows', [lang === 'fr' ? 'Valeur' : 'Value']: summary.total_expenses },
         { [lang === 'fr' ? 'Indicateur' : 'Indicator']: lang === 'fr' ? 'Solde net'          : 'Net balance',    [lang === 'fr' ? 'Valeur' : 'Value']: summary.net_balance },
-        { [lang === 'fr' ? 'Indicateur' : 'Indicator']: lang === 'fr' ? 'Dépenses personnel' : 'Staff spending', [lang === 'fr' ? 'Valeur' : 'Value']: summary.staff_spending },
+        { [lang === 'fr' ? 'Indicateur' : 'Indicator']: lang === 'fr' ? 'Depenses personnel' : 'Staff spending', [lang === 'fr' ? 'Valeur' : 'Value']: summary.staff_spending },
       ]
       const ws2 = XLSX.utils.json_to_sheet(sumRows)
-      XLSX.utils.book_append_sheet(wb, ws2, lang === 'fr' ? 'Résumé' : 'Summary')
+      XLSX.utils.book_append_sheet(wb, ws2, lang === 'fr' ? 'Resume' : 'Summary')
     }
 
-    XLSX.writeFile(wb, `dikos-finance-${todayISO()}.xlsx`)
+    XLSX.writeFile(wb, 'dikos-finance-' + todayISO() + '.xlsx')
     show(t('rep_exported_excel'))
   }
 
+  const openCashModal = (mode) => {
+    setCashMode(mode)
+    setCashDate(todayISO())
+    setOpenBal('')
+    setCloseBal('')
+    setCashError('')
+    setCashModal(true)
+  }
+
   const submitCash = async () => {
+    setCashError('')
+    if (cashMode === 'open' && (!openBal || parseFloat(openBal) < 0)) {
+      setCashError(lang === 'fr' ? 'Veuillez saisir un solde valide' : 'Please enter a valid balance')
+      return
+    }
+    if (cashMode === 'close' && (!closeBal || parseFloat(closeBal) < 0)) {
+      setCashError(lang === 'fr' ? 'Veuillez saisir un solde valide' : 'Please enter a valid balance')
+      return
+    }
     setCashLoading(true)
     try {
       if (cashMode === 'open') {
-        await reportsAPI.openDay({ date:cashDate, opening_balance:parseFloat(openBal), note:'' })
+        await reportsAPI.openDay({ date: cashDate, opening_balance: parseFloat(openBal), note: '' })
         show(t('cash_opened'))
       } else {
-        await reportsAPI.closeDay(cashDate, { closing_balance:parseFloat(closeBal) })
+        await reportsAPI.closeDay(cashDate, { closing_balance: parseFloat(closeBal), note: '' })
         show(t('cash_closed'))
       }
-      setCashModal(false); setOpenBal(''); setCloseBal(''); load()
+      setCashModal(false)
+      load()
     } catch (e) {
-      show(e.response?.data?.detail || 'Erreur', 'error')
+      const detail = e.response?.data?.detail
+      if (typeof detail === 'string') {
+        setCashError(detail)
+      } else if (Array.isArray(detail)) {
+        setCashError(detail.map(d => d.msg).join(', '))
+      } else {
+        setCashError(lang === 'fr' ? 'Erreur — vérifiez que la caisse est déjà ouverte pour cette date' : 'Error — make sure the register is already opened for this date')
+      }
     } finally {
       setCashLoading(false)
     }
@@ -194,9 +226,9 @@ export default function ReportsPage() {
         <div className="page-eyebrow"><span className="eyebrow-line" />{t('rep_eyebrow')}</div>
         <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', flexWrap:'wrap', gap:16 }}>
           <h1>{t('rep_title')}</h1>
-          <div style={{ display:'flex', gap:10 }}>
-            <button className="btn btn-outline" onClick={() => { setCashMode('open'); setCashModal(true) }}>{t('rep_open_cash')}</button>
-            <button className="btn btn-outline" onClick={() => { setCashMode('close'); setCashModal(true) }}>{t('rep_close_cash')}</button>
+          <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+            <button className="btn btn-outline" onClick={() => openCashModal('open')}>{t('rep_open_cash')}</button>
+            <button className="btn btn-outline" onClick={() => openCashModal('close')}>{t('rep_close_cash')}</button>
             <button className="btn btn-outline" onClick={exportExcel}>{t('rep_excel')}</button>
             <button className="btn btn-primary" onClick={exportPDF}>{t('rep_pdf')}</button>
           </div>
@@ -225,25 +257,25 @@ export default function ReportsPage() {
         <div className="summary-grid" style={{ marginBottom:40 }}>
           <div className="summary-card">
             <div className="summary-label">{t('dash_card_in')}</div>
-            <div className="summary-value positive">{formatAmount(summary.total_income,'XAF')}</div>
+            <div className="summary-value positive">{formatAmount(summary.total_income, 'XAF')}</div>
             <div className="summary-sub">{summary.income_count} transactions</div>
           </div>
           <div className="summary-card">
             <div className="summary-label">{t('dash_card_out')}</div>
-            <div className="summary-value negative">{formatAmount(summary.total_expenses,'XAF')}</div>
+            <div className="summary-value negative">{formatAmount(summary.total_expenses, 'XAF')}</div>
             <div className="summary-sub">{summary.expense_count} transactions</div>
           </div>
           <div className="summary-card">
             <div className="summary-label">{t('dash_card_bal')}</div>
             <div className={`summary-value ${summary.net_balance >= 0 ? 'gold' : 'negative'}`}>
-              {formatAmount(Math.abs(summary.net_balance),'XAF')}
+              {formatAmount(Math.abs(summary.net_balance), 'XAF')}
             </div>
             <div className="summary-sub">{summary.net_balance >= 0 ? t('dash_surplus') : t('dash_deficit')}</div>
           </div>
           <div className="summary-card">
             <div className="summary-label">{t('dash_card_staff')}</div>
-            <div className="summary-value negative">{formatAmount(summary.staff_spending,'XAF')}</div>
-            <div className="summary-sub">{summary.transaction_count} {lang === 'fr' ? 'opérations' : 'operations'}</div>
+            <div className="summary-value negative">{formatAmount(summary.staff_spending, 'XAF')}</div>
+            <div className="summary-sub">{summary.transaction_count} {lang === 'fr' ? 'operations' : 'operations'}</div>
           </div>
         </div>
       )}
@@ -262,7 +294,9 @@ export default function ReportsPage() {
             </tr>
           </thead>
           <tbody>
-            {byCat.length === 0 ? (
+            {loading ? (
+              <tr><td colSpan={5} style={{ textAlign:'center', padding:40, color:'var(--muted)' }}>{t('dash_loading')}</td></tr>
+            ) : byCat.length === 0 ? (
               <tr><td colSpan={5}><div className="empty-state"><p>{t('rep_no_data')}</p></div></td></tr>
             ) : byCat.map(c => {
               const def = EXPENSE_CATS[c.category] || EXPENSE_CATS.autre
@@ -275,7 +309,7 @@ export default function ReportsPage() {
                     </div>
                   </td>
                   <td className="right td-muted">{c.count}</td>
-                  <td className="right"><span className="td-amount expense">{formatAmount(c.total,'XAF')}</span></td>
+                  <td className="right"><span className="td-amount expense">{formatAmount(c.total, 'XAF')}</span></td>
                   <td className="right" style={{ color:'var(--gold)', fontFamily:'var(--font-serif)', fontSize:16 }}>{c.percent}%</td>
                   <td>
                     <div style={{ height:4, background:'var(--navy-border)', borderRadius:2 }}>
@@ -311,7 +345,7 @@ export default function ReportsPage() {
                 <tr key={w.worker_name}>
                   <td><span style={{ fontFamily:'var(--font-serif)', fontSize:15, fontWeight:500 }}>{w.worker_name}</span></td>
                   <td className="right td-muted">{w.count}</td>
-                  <td className="right"><span className="td-amount expense">{formatAmount(w.total,'XAF')}</span></td>
+                  <td className="right"><span className="td-amount expense">{formatAmount(w.total, 'XAF')}</span></td>
                   <td>{def && <span className={`badge ${def.badge}`}>{lang === 'fr' ? def.label : def.labelEn}</span>}</td>
                 </tr>
               )
@@ -322,6 +356,18 @@ export default function ReportsPage() {
 
       {/* Daily cash register */}
       <div className="section-label">{t('rep_cash_title')}</div>
+
+      {/* Explanation box */}
+      <div style={{ background:'var(--navy-light)', border:'1px solid var(--navy-border)', borderLeft:'3px solid var(--gold)', padding:'14px 20px', marginBottom:20, fontSize:12, color:'var(--white-dim)', lineHeight:1.6 }}>
+        <strong style={{ color:'var(--gold)', display:'block', marginBottom:6, fontSize:11, letterSpacing:'1px', textTransform:'uppercase' }}>
+          {lang === 'fr' ? 'Comment utiliser le registre de caisse' : 'How to use the cash register'}
+        </strong>
+        {lang === 'fr'
+          ? 'Chaque matin, cliquez "Ouvrir caisse" et saisissez le montant physique en caisse. En fin de journée, cliquez "Cloturer caisse" et saisissez le montant restant. L\'ecart vous indique si de l\'argent manque.'
+          : 'Each morning, click "Open register" and enter the physical cash amount. At end of day, click "Close register" and enter the remaining amount. The variance shows if money is missing.'
+        }
+      </div>
+
       <div className="table-wrap">
         <table>
           <thead>
@@ -335,20 +381,27 @@ export default function ReportsPage() {
           </thead>
           <tbody>
             {dailyCash.length === 0 ? (
-              <tr><td colSpan={5}><div className="empty-state"><p>{t('rep_cash_empty')}</p><span>{t('rep_cash_empty_sub')}</span></div></td></tr>
+              <tr><td colSpan={5}>
+                <div className="empty-state">
+                  <p>{t('rep_cash_empty')}</p>
+                  <span>{t('rep_cash_empty_sub')}</span>
+                </div>
+              </td></tr>
             ) : dailyCash.map(dc => {
               const ecart = dc.closing_balance != null ? dc.closing_balance - dc.opening_balance : null
               return (
                 <tr key={dc.id}>
-                  <td className="td-serif">{formatDate(dc.date)}</td>
-                  <td className="right" style={{ color:'var(--white-dim)' }}>{formatAmount(dc.opening_balance,'XAF')}</td>
-                  <td className="right" style={{ color:'var(--white-dim)' }}>{dc.closing_balance != null ? formatAmount(dc.closing_balance,'XAF') : '—'}</td>
+                  <td className="td-serif">{formatDate(dc.date, lang)}</td>
+                  <td className="right" style={{ color:'var(--white-dim)' }}>{formatAmount(dc.opening_balance, 'XAF')}</td>
+                  <td className="right" style={{ color:'var(--white-dim)' }}>
+                    {dc.closing_balance != null ? formatAmount(dc.closing_balance, 'XAF') : '—'}
+                  </td>
                   <td className="right">
-                    {ecart != null
-                      ? <span style={{ color: ecart >= 0 ? 'var(--green)' : 'var(--red)', fontFamily:'var(--font-serif)', fontSize:16 }}>
-                          {ecart >= 0 ? '+' : ''}{formatAmount(ecart,'XAF')}
-                        </span>
-                      : '—'}
+                    {ecart != null ? (
+                      <span style={{ color: ecart >= 0 ? 'var(--green)' : 'var(--red)', fontFamily:'var(--font-serif)', fontSize:16 }}>
+                        {ecart >= 0 ? '+' : ''}{formatAmount(ecart, 'XAF')}
+                      </span>
+                    ) : '—'}
                   </td>
                   <td>
                     {dc.closing_balance != null
@@ -363,36 +416,89 @@ export default function ReportsPage() {
         </table>
       </div>
 
-      {/* Cash modal */}
-      {cashModal && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setCashModal(false)}>
-          <div className="modal">
-            <button className="modal-close" onClick={() => setCashModal(false)}>×</button>
-            <div className="modal-eyebrow">{t('cash_eyebrow')}</div>
-            <h2>{cashMode === 'open' ? t('cash_title_open') : t('cash_title_close')}</h2>
+      {/* Cash modal — rendered via portal */}
+      {cashModal && createPortal(
+        <div
+          style={{
+            position:'fixed', inset:0, top:0, left:0, right:0, bottom:0,
+            width:'100vw', height:'100vh',
+            background:'rgba(5,10,22,0.88)',
+            zIndex:9999,
+            display:'flex', alignItems:'center', justifyContent:'center',
+            padding:'40px 20px', overflowY:'auto',
+          }}
+          onClick={e => e.target === e.currentTarget && setCashModal(false)}
+        >
+          <div style={{
+            background:'var(--navy-light)', border:'1px solid var(--navy-border)',
+            width:'100%', maxWidth:480, padding:40, position:'relative',
+          }}>
+            <button
+              onClick={() => setCashModal(false)}
+              style={{ position:'absolute', top:16, right:16, background:'none', border:'none', color:'var(--muted)', fontSize:22, cursor:'pointer' }}
+            >x</button>
+
+            <div style={{ fontSize:10, letterSpacing:'2.5px', textTransform:'uppercase', color:'var(--gold)', marginBottom:8 }}>
+              {t('cash_eyebrow')}
+            </div>
+            <h2 style={{ fontFamily:'var(--font-serif)', fontSize:28, fontWeight:400, marginBottom:8 }}>
+              {cashMode === 'open' ? t('cash_title_open') : t('cash_title_close')}
+            </h2>
+
+            {/* Explanation */}
+            <p style={{ fontSize:12, color:'var(--muted)', marginBottom:24, lineHeight:1.6 }}>
+              {cashMode === 'open'
+                ? (lang === 'fr' ? 'Saisissez le montant physique present en caisse ce matin.' : 'Enter the physical cash amount present in the register this morning.')
+                : (lang === 'fr' ? 'Saisissez le montant physique restant en caisse ce soir. Si inferieur au solde attendu, de l\'argent manque.' : 'Enter the physical cash amount remaining this evening. If lower than expected, money is missing.')
+              }
+            </p>
+
             <div className="form-group">
               <label>{t('cash_date')}</label>
               <input type="date" value={cashDate} onChange={e => setCashDate(e.target.value)} />
             </div>
+
             {cashMode === 'open' ? (
               <div className="form-group">
                 <label>{t('cash_open_bal')}</label>
-                <input type="number" value={openBal} onChange={e => setOpenBal(e.target.value)} placeholder={t('cash_open_placeholder')} min="0" />
+                <input
+                  type="number"
+                  value={openBal}
+                  onChange={e => setOpenBal(e.target.value)}
+                  placeholder={t('cash_open_placeholder')}
+                  min="0"
+                  autoFocus
+                />
               </div>
             ) : (
               <div className="form-group">
                 <label>{t('cash_close_bal')}</label>
-                <input type="number" value={closeBal} onChange={e => setCloseBal(e.target.value)} placeholder={t('cash_close_placeholder')} min="0" />
+                <input
+                  type="number"
+                  value={closeBal}
+                  onChange={e => setCloseBal(e.target.value)}
+                  placeholder={t('cash_close_placeholder')}
+                  min="0"
+                  autoFocus
+                />
               </div>
             )}
-            <div className="modal-actions">
+
+            {cashError && (
+              <div style={{ background:'var(--red-dim)', border:'1px solid rgba(224,90,78,0.3)', padding:'10px 14px', marginBottom:16, fontSize:13, color:'var(--red)' }}>
+                {cashError}
+              </div>
+            )}
+
+            <div style={{ display:'flex', gap:12, marginTop:8 }}>
               <button className="btn btn-primary" style={{ flex:1 }} onClick={submitCash} disabled={cashLoading}>
                 {cashLoading ? t('cash_saving') : cashMode === 'open' ? t('cash_btn_open') : t('cash_btn_close')}
               </button>
               <button className="btn btn-outline" onClick={() => setCashModal(false)}>{t('modal_cancel')}</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
