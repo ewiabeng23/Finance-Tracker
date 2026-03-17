@@ -222,12 +222,10 @@ export default function ExpensesPage() {
       </div>
 
       {showModal && (
-        <TransactionModal
-          initial={editing || { type: 'expense' }}
-          onClose={() => { setShowModal(false); setEditing(null) }}
-          onSaved={() => { setShowModal(false); setEditing(null); load(); show(t('tx_saved')) }}
-        />
-      )}
-    </div>
-  )
-}
+  <TransactionModal
+    initial={editing}
+    defaultType="expense"
+    onClose={() => { setShowModal(false); setEditing(null) }}
+    onSaved={() => { setShowModal(false); setEditing(null); load(); show(t('tx_saved')) }}
+  />
+)}
