@@ -17,7 +17,7 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
   const [reference,   setReference]   = useState(initial?.reference || genRef())
   const [amount,      setAmount]      = useState(initial?.amount || '')
   const [currency,    setCurrency]    = useState(initial?.currency || 'XAF')
-  const [category,    setCategory]    = useState(initial?.category || 'prime')
+  const [category,    setCategory]    = useState(initial?.category || (defaultType === 'expense' ? 'transport' : 'prime'))
   const [description, setDescription] = useState(initial?.description || '')
   const [note,        setNote]        = useState(initial?.note || '')
   const [customerId,  setCustomerId]  = useState(initial?.customer_id || '')
@@ -27,7 +27,7 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
   const [error,       setError]       = useState('')
 
   useEffect(() => {
-    customersAPI.list().then(r => setCustomers(r.data))
+    customersAPI.list().then(r => setCustomers(r.data)).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -60,18 +60,18 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
   return createPortal(
     <div
       style={{
-        position: 'fixed', inset: 0, top: 0, left: 0, right: 0, bottom: 0,
-        width: '100vw', height: '100vh',
-        background: 'rgba(5,10,22,0.88)',
-        zIndex: 9999,
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-        padding: '40px 20px', overflowY: 'auto',
+        position:'fixed', inset:0, top:0, left:0, right:0, bottom:0,
+        width:'100vw', height:'100vh',
+        background:'rgba(5,10,22,0.88)',
+        zIndex:9999,
+        display:'flex', alignItems:'flex-start', justifyContent:'center',
+        padding:'40px 20px', overflowY:'auto',
       }}
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div style={{
-        background: 'var(--navy-light)', border: '1px solid var(--navy-border)',
-        width: '100%', maxWidth: 540, padding: 40, position: 'relative', margin: 'auto',
+        background:'var(--navy-light)', border:'1px solid var(--navy-border)',
+        width:'100%', maxWidth:540, padding:40, position:'relative', margin:'auto',
       }}>
         <button
           onClick={onClose}
@@ -89,12 +89,12 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
           <label>{t('modal_type')}</label>
           <div className="type-toggle">
             <button
-              className={`type-opt income ${type === 'income' ? 'active' : ''}`}
+              className={'type-opt income ' + (type === 'income' ? 'active' : '')}
               onClick={() => setType('income')}
               disabled={isEdit && !isManager}
             >{t('modal_type_in')}</button>
             <button
-              className={`type-opt expense ${type === 'expense' ? 'active' : ''}`}
+              className={'type-opt expense ' + (type === 'expense' ? 'active' : '')}
               onClick={() => setType('expense')}
               disabled={isEdit && !isManager}
             >{t('modal_type_out')}</button>
@@ -167,7 +167,7 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
           <textarea rows={2} value={note} onChange={e => setNote(e.target.value)} placeholder={t('modal_note_placeholder')} />
         </div>
 
-        {error && <p style={{ fontSize:12, color:'var(--red)', marginBottom:12 }}>x {error}</p>}
+        {error && <p style={{ fontSize:12, color:'var(--red)', marginBottom:12 }}>! {error}</p>}
 
         <div style={{ display:'flex', gap:12, marginTop:8 }}>
           <button className="btn btn-primary" style={{ flex:1 }} onClick={submit} disabled={loading}>
