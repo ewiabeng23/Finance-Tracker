@@ -56,6 +56,7 @@ class CustomerCreate(BaseModel):
     email:     Optional[str]
     address:   Optional[str]
     note:      Optional[str]
+    company_name: Optional[str]
 
 class CustomerOut(BaseModel):
     id:         int
@@ -66,6 +67,7 @@ class CustomerOut(BaseModel):
     note:       Optional[str]
     created_at: Optional[datetime]
     created_by: int
+    company_name: Optional[str]
     class Config:
         from_attributes = True
 
@@ -81,6 +83,8 @@ class TransactionCreate(BaseModel):
     note:        Optional[str]
     customer_id: Optional[int]
     worker_name: Optional[str]
+    payment_method: Optional[str] = "cash"
+    attachment_url: Optional[str]
 
 class TransactionUpdate(BaseModel):
     date:        Optional[date]
@@ -107,6 +111,8 @@ class TransactionOut(BaseModel):
     created_by:   int
     customer:     Optional[CustomerOut]
     created_by_user: Optional[UserOut]
+    payment_method: Optional[str]
+    attachment_url: Optional[str]
     class Config:
         from_attributes = True
 
