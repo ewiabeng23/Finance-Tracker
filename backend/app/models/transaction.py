@@ -32,7 +32,8 @@ class Transaction(Base):
 
     # For expenses: which worker spent
     worker_name  = Column(String(100))  # denormalised for simplicity
-
+    payment_method = Column(String(30), default="cash")
+    attachment_url = Column(Text, nullable=True)
     # Audit trail — who entered this record
     created_by   = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_by_user = relationship("User", back_populates="transactions")
