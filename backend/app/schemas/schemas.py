@@ -158,3 +158,11 @@ class WorkerBreakdown(BaseModel):
     total:       float
     count:       int
     categories:  list[CategoryBreakdown]
+class CustomerUpdate(BaseModel):
+    full_name:    Optional[str]
+    phone:        Optional[str]
+    email:        Optional[str]
+    address:      Optional[str]
+    note:         Optional[str]
+    company_name: Optional[str]
+    is_active:    Optional[bool]
