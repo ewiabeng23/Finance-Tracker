@@ -12,19 +12,20 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
   const t = k => TR[lang][k]
   const isEdit = !!initial
 
-  const [type,        setType]        = useState(initial?.type || defaultType || 'income')
-  const [date,        setDate]        = useState(initial?.date || todayISO())
-  const [reference,   setReference]   = useState(initial?.reference || genRef())
-  const [amount,      setAmount]      = useState(initial?.amount || '')
-  const [currency,    setCurrency]    = useState(initial?.currency || 'XAF')
-  const [category,    setCategory]    = useState(initial?.category || (defaultType === 'expense' ? 'transport' : 'prime'))
-  const [description, setDescription] = useState(initial?.description || '')
-  const [note,        setNote]        = useState(initial?.note || '')
-  const [customerId,  setCustomerId]  = useState(initial?.customer_id || '')
-  const [workerName,  setWorkerName]  = useState(initial?.worker_name || '')
-  const [customers,   setCustomers]   = useState([])
-  const [loading,     setLoading]     = useState(false)
-  const [error,       setError]       = useState('')
+  const [type,          setType]          = useState(initial?.type || defaultType || 'income')
+  const [date,          setDate]          = useState(initial?.date || todayISO())
+  const [reference,     setReference]     = useState(initial?.reference || genRef())
+  const [amount,        setAmount]        = useState(initial?.amount || '')
+  const [currency,      setCurrency]      = useState(initial?.currency || 'XAF')
+  const [category,      setCategory]      = useState(initial?.category || (defaultType === 'expense' ? 'transport' : 'prime'))
+  const [description,   setDescription]   = useState(initial?.description || '')
+  const [note,          setNote]          = useState(initial?.note || '')
+  const [customerId,    setCustomerId]    = useState(initial?.customer_id || '')
+  const [workerName,    setWorkerName]    = useState(initial?.worker_name || '')
+  const [paymentMethod, setPaymentMethod] = useState(initial?.payment_method || 'cash')
+  const [customers,     setCustomers]     = useState([])
+  const [loading,       setLoading]       = useState(false)
+  const [error,         setError]         = useState('')
 
   useEffect(() => {
     customersAPI.list().then(r => setCustomers(r.data)).catch(() => {})
@@ -43,6 +44,7 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
       amount: parseFloat(amount), currency, description, note: note || null,
       customer_id: customerId ? parseInt(customerId) : null,
       worker_name: type === 'expense' ? (workerName || user?.full_name) : null,
+      payment_method: paymentMethod,
     }
     try {
       if (isEdit) await transactionsAPI.update(initial.id, payload)
@@ -117,7 +119,7 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
             <label>{t('modal_customer')}</label>
             <select value={customerId} onChange={e => setCustomerId(e.target.value)}>
               <option value="">{t('modal_customer_placeholder')}</option>
-              {customers.map(c => (
+              {customers.filter(c => c.is_active !== false).map(c => (
                 <option key={c.id} value={c.id}>{c.full_name}</option>
               ))}
             </select>
@@ -150,6 +152,17 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
               {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
+        </div>
+
+        <div className="form-group">
+          <label>{t('modal_payment_method')}</label>
+          <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
+            <option value="cash">{t('modal_payment_cash')}</option>
+            <option value="transfer">{t('modal_payment_transfer')}</option>
+            <option value="mobile_money">{t('modal_payment_mobile')}</option>
+            <option value="cheque">{t('modal_payment_cheque')}</option>
+            <option value="card">{t('modal_payment_card')}</option>
+          </select>
         </div>
 
         <div className="form-group">
