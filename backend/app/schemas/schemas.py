@@ -68,6 +68,7 @@ class CustomerOut(BaseModel):
     created_at: Optional[datetime]
     created_by: int
     company_name: Optional[str]
+    is_active:    bool
     class Config:
         from_attributes = True
 
