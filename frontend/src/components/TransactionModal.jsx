@@ -126,16 +126,16 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
           </div>
         )}
 
-        {type === 'expense' && (
-          <div className="form-group">
-            <label>{t('modal_worker')}</label>
-            <input
-              value={workerName}
-              onChange={e => setWorkerName(e.target.value)}
-              placeholder={user?.full_name}
-            />
-          </div>
-        )}
+        {type === 'expense' && isManager && (
+  <div className="form-group">
+    <label>{t('modal_worker')}</label>
+    <input
+      value={workerName}
+      onChange={e => setWorkerName(e.target.value)}
+      placeholder={user?.full_name}
+    />
+  </div>
+)}
 
         <div className="form-row">
           <div className="form-group">
