@@ -74,18 +74,18 @@ class CustomerOut(BaseModel):
 
 # ── Transaction ────────────────────────────────────
 class TransactionCreate(BaseModel):
-    reference:   str
-    date:        date
-    type:        TransactionType
-    category:    str
-    amount:      float
-    currency:    Currency = Currency.XAF
-    description: Optional[str]
-    note:        Optional[str]
-    customer_id: Optional[int]
-    worker_name: Optional[str]
+    reference:      str
+    date:           date
+    type:           TransactionType
+    category:       str
+    amount:         float
+    currency:       Currency = Currency.XAF
+    description:    Optional[str] = None
+    note:           Optional[str] = None
+    customer_id:    Optional[int] = None
+    worker_name:    Optional[str] = None
     payment_method: Optional[str] = "cash"
-    attachment_url: Optional[str]
+    attachment_url: Optional[str] = None
 
 class TransactionUpdate(BaseModel):
     date:        Optional[date]
