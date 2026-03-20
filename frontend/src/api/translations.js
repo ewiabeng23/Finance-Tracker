@@ -1,6 +1,5 @@
 export const TR = {
   fr: {
-    // NAV
     nav_dashboard: 'Dashboard',
     nav_transactions: 'Transactions',
     nav_expenses: 'Dépenses',
@@ -9,8 +8,6 @@ export const TR = {
     nav_reports: 'Rapports',
     nav_logout: 'Déconnexion',
     nav_subtitle: 'Finance Tracker',
-
-    // LOGIN
     login_eyebrow: 'Connexion',
     login_title: 'Accéder à votre espace',
     login_username: "Nom d'utilisateur",
@@ -21,8 +18,6 @@ export const TR = {
     login_loading: 'Connexion...',
     login_error: "Identifiants incorrects. Vérifiez votre nom d'utilisateur et mot de passe.",
     login_footer: "© 2025 Diko's Assurances SARL — Courtier agréé Chanas Assurances S.A.",
-
-    // DASHBOARD
     dash_eyebrow: "Gestion Financière — Diko's Assurances SARL",
     dash_greeting: 'Bonjour,',
     dash_new_tx: 'Nouvelle transaction',
@@ -49,8 +44,6 @@ export const TR = {
     dash_loading: 'Chargement...',
     chart_income: 'Entrées',
     chart_expenses: 'Sorties',
-
-    // TRANSACTIONS
     tx_eyebrow: 'Historique complet',
     tx_title: 'Journal des transactions',
     tx_new: 'Nouvelle transaction',
@@ -72,8 +65,6 @@ export const TR = {
     tx_empty_sub: 'Ajustez vos filtres ou ajoutez une transaction',
     tx_badge_in: '↑ Entrée',
     tx_badge_out: '↓ Sortie',
-
-    // EXPENSES
     exp_eyebrow: 'Analyse des dépenses',
     exp_title: 'Dépenses du personnel',
     exp_new: 'Nouvelle dépense',
@@ -90,8 +81,6 @@ export const TR = {
     exp_empty_sub: "Ajoutez une sortie avec un collaborateur pour voir l'analyse",
     exp_transactions: 'transaction',
     exp_transactions_pl: 'transactions',
-
-    // CUSTOMERS
     cust_eyebrow: 'Base clients',
     cust_title: 'Gestion des clients',
     cust_new: 'Nouveau client',
@@ -106,8 +95,6 @@ export const TR = {
     cust_deactivated: 'Client désactivé ✓',
     cust_reactivated: 'Client réactivé ✓',
     cust_inactive_label: 'Inactif',
-
-    // STAFF
     staff_eyebrow: 'Gestion des accès',
     staff_title: 'Comptes personnel',
     staff_new: 'Nouveau compte',
@@ -139,8 +126,6 @@ export const TR = {
     staff_access_write: 'Écriture',
     staff_access_delete: 'Suppression',
     staff_access_admin: 'Admin',
-
-    // REPORTS
     rep_eyebrow: 'Analyse & exports',
     rep_title: 'Rapports financiers',
     rep_open_cash: 'Ouvrir caisse',
@@ -171,8 +156,6 @@ export const TR = {
     rep_no_data: 'Aucune donnée',
     rep_exported_pdf: 'Rapport PDF téléchargé ✓',
     rep_exported_excel: 'Fichier Excel téléchargé ✓',
-
-    // CASH MODAL
     cash_title_open: 'Ouvrir la caisse',
     cash_title_close: 'Clôturer la caisse',
     cash_eyebrow: 'Caisse journalière',
@@ -186,8 +169,6 @@ export const TR = {
     cash_saving: 'Enregistrement...',
     cash_opened: 'Caisse ouverte ✓',
     cash_closed: 'Caisse clôturée ✓',
-
-    // TRANSACTION MODAL
     modal_new_eyebrow: 'Nouvelle transaction',
     modal_new_title: 'Enregistrer un mouvement',
     modal_edit_eyebrow: 'Modifier',
@@ -220,8 +201,6 @@ export const TR = {
     modal_err_amount: 'Veuillez saisir un montant valide',
     modal_err_desc: 'La description est requise',
     modal_err_save: 'Erreur lors de la sauvegarde',
-
-    // CUSTOMER MODAL
     cust_modal_new_eyebrow: 'Nouveau client',
     cust_modal_new_title: 'Ajouter un client',
     cust_modal_edit_eyebrow: 'Modifier client',
@@ -240,8 +219,6 @@ export const TR = {
     cust_modal_update: 'Mettre à jour',
     cust_modal_saving: 'Enregistrement...',
     cust_modal_err_name: 'Le nom est requis',
-
-    // USER MODAL
     user_modal_new_eyebrow: 'Nouveau collaborateur',
     user_modal_new_title: 'Créer un compte',
     user_modal_edit_eyebrow: 'Modifier collaborateur',
@@ -262,15 +239,25 @@ export const TR = {
     user_modal_err_username: "Le nom d'utilisateur est requis",
     user_modal_err_password: 'Le mot de passe est requis',
     user_modal_err_taken: "Nom d'utilisateur déjà pris",
-
-    // FOOTER
     footer_copy: "© 2025 Diko's Assurances SARL",
     footer_tagline: 'Your protection, our commitment.',
     footer_broker: "Courtier agréé — Chanas Assurances S.A.",
+    pwd_eyebrow: 'Sécurité du compte',
+    pwd_title: 'Changer le mot de passe',
+    pwd_btn: 'Mot de passe',
+    pwd_current: 'Mot de passe actuel',
+    pwd_new: 'Nouveau mot de passe',
+    pwd_confirm: 'Confirmer le mot de passe',
+    pwd_save: 'Mettre à jour',
+    pwd_saving: 'Enregistrement...',
+    pwd_success: 'Mot de passe mis à jour avec succès',
+    pwd_err_current: 'Veuillez saisir votre mot de passe actuel',
+    pwd_err_length: 'Le nouveau mot de passe doit contenir au moins 6 caractères',
+    pwd_err_match: 'Les mots de passe ne correspondent pas',
+    pwd_err_save: 'Erreur lors de la mise à jour',
   },
 
   en: {
-    // NAV
     nav_dashboard: 'Dashboard',
     nav_transactions: 'Transactions',
     nav_expenses: 'Expenses',
@@ -279,8 +266,6 @@ export const TR = {
     nav_reports: 'Reports',
     nav_logout: 'Sign out',
     nav_subtitle: 'Finance Tracker',
-
-    // LOGIN
     login_eyebrow: 'Sign in',
     login_title: 'Access your workspace',
     login_username: 'Username',
@@ -291,8 +276,6 @@ export const TR = {
     login_loading: 'Signing in...',
     login_error: 'Incorrect credentials. Please check your username and password.',
     login_footer: "© 2025 Diko's Assurances SARL — Accredited broker Chanas Assurances S.A.",
-
-    // DASHBOARD
     dash_eyebrow: "Finance Management — Diko's Assurances SARL",
     dash_greeting: 'Hello,',
     dash_new_tx: 'New transaction',
@@ -319,8 +302,6 @@ export const TR = {
     dash_loading: 'Loading...',
     chart_income: 'Income',
     chart_expenses: 'Expenses',
-
-    // TRANSACTIONS
     tx_eyebrow: 'Full history',
     tx_title: 'Transaction journal',
     tx_new: 'New transaction',
@@ -342,8 +323,6 @@ export const TR = {
     tx_empty_sub: 'Adjust your filters or add a transaction',
     tx_badge_in: '↑ Income',
     tx_badge_out: '↓ Expense',
-
-    // EXPENSES
     exp_eyebrow: 'Expense analysis',
     exp_title: 'Staff expenses',
     exp_new: 'New expense',
@@ -360,8 +339,6 @@ export const TR = {
     exp_empty_sub: 'Add an outflow with a staff member to see analysis',
     exp_transactions: 'transaction',
     exp_transactions_pl: 'transactions',
-
-    // CUSTOMERS
     cust_eyebrow: 'Client database',
     cust_title: 'Client management',
     cust_new: 'New client',
@@ -376,8 +353,6 @@ export const TR = {
     cust_deactivated: 'Client deactivated ✓',
     cust_reactivated: 'Client reactivated ✓',
     cust_inactive_label: 'Inactive',
-
-    // STAFF
     staff_eyebrow: 'Access management',
     staff_title: 'Staff accounts',
     staff_new: 'New account',
@@ -409,8 +384,6 @@ export const TR = {
     staff_access_write: 'Write',
     staff_access_delete: 'Delete',
     staff_access_admin: 'Admin',
-
-    // REPORTS
     rep_eyebrow: 'Analytics & exports',
     rep_title: 'Financial reports',
     rep_open_cash: 'Open register',
@@ -441,8 +414,6 @@ export const TR = {
     rep_no_data: 'No data',
     rep_exported_pdf: 'PDF report downloaded ✓',
     rep_exported_excel: 'Excel file downloaded ✓',
-
-    // CASH MODAL
     cash_title_open: 'Open cash register',
     cash_title_close: 'Close cash register',
     cash_eyebrow: 'Daily register',
@@ -456,8 +427,6 @@ export const TR = {
     cash_saving: 'Saving...',
     cash_opened: 'Register opened ✓',
     cash_closed: 'Register closed ✓',
-
-    // TRANSACTION MODAL
     modal_new_eyebrow: 'New transaction',
     modal_new_title: 'Record a transaction',
     modal_edit_eyebrow: 'Edit',
@@ -490,8 +459,6 @@ export const TR = {
     modal_err_amount: 'Please enter a valid amount',
     modal_err_desc: 'Description is required',
     modal_err_save: 'Error saving transaction',
-
-    // CUSTOMER MODAL
     cust_modal_new_eyebrow: 'New client',
     cust_modal_new_title: 'Add a client',
     cust_modal_edit_eyebrow: 'Edit client',
@@ -510,8 +477,6 @@ export const TR = {
     cust_modal_update: 'Update',
     cust_modal_saving: 'Saving...',
     cust_modal_err_name: 'Name is required',
-
-    // USER MODAL
     user_modal_new_eyebrow: 'New staff member',
     user_modal_new_title: 'Create account',
     user_modal_edit_eyebrow: 'Edit staff member',
@@ -532,10 +497,21 @@ export const TR = {
     user_modal_err_username: 'Username is required',
     user_modal_err_password: 'Password is required',
     user_modal_err_taken: 'Username already taken',
-
-    // FOOTER
     footer_copy: "© 2025 Diko's Assurances SARL",
     footer_tagline: 'Your protection, our commitment.',
     footer_broker: "Accredited broker — Chanas Assurances S.A.",
+    pwd_eyebrow: 'Account security',
+    pwd_title: 'Change password',
+    pwd_btn: 'Password',
+    pwd_current: 'Current password',
+    pwd_new: 'New password',
+    pwd_confirm: 'Confirm new password',
+    pwd_save: 'Update password',
+    pwd_saving: 'Saving...',
+    pwd_success: 'Password updated successfully',
+    pwd_err_current: 'Please enter your current password',
+    pwd_err_length: 'New password must be at least 6 characters',
+    pwd_err_match: 'Passwords do not match',
+    pwd_err_save: 'Error updating password',
   }
 }
