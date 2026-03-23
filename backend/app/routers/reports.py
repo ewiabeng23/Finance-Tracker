@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 from typing import Optional, List
 from datetime import date
 from app.core.database import get_db
@@ -10,8 +9,11 @@ from app.models.transaction import Transaction, TransactionType
 from app.models.daily_cash import DailyCash
 from app.schemas.schemas import (
     SummaryReport, CategoryBreakdown, WorkerBreakdown,
-    DailyCashCreate, DailyCashClose, DailyCashOut
+    DailyCashCreate, DailyCashClose, DailyCashOut,
+    ProfitLossReport, ProfitLossLine,
 )
+
+TVA_RATE = 0.1925
 
 router = APIRouter()
 
@@ -27,13 +29,16 @@ def get_summary(
     if date_from: q = q.filter(Transaction.date >= date_from)
     if date_to:   q = q.filter(Transaction.date <= date_to)
 
-    all_tx = q.all()
+    all_tx   = q.all()
     income   = [t for t in all_tx if t.type == TransactionType.income]
     expenses = [t for t in all_tx if t.type == TransactionType.expense]
     staff    = [t for t in expenses if t.worker_name]
 
     total_in  = sum(t.amount for t in income)
     total_out = sum(t.amount for t in expenses)
+
+    tva_collected  = sum(t.tva_amount or 0 for t in income   if t.is_tva_applicable)
+    tva_deductible = sum(t.tva_amount or 0 for t in expenses if t.is_tva_applicable)
 
     return SummaryReport(
         total_income=total_in,
@@ -43,6 +48,55 @@ def get_summary(
         transaction_count=len(all_tx),
         income_count=len(income),
         expense_count=len(expenses),
+        tva_collected=tva_collected,
+        tva_deductible=tva_deductible,
+        tva_due=tva_collected - tva_deductible,
+    )
+
+# ── P&L Report ─────────────────────────────────────
+@router.get("/profit-loss", response_model=ProfitLossReport)
+def profit_loss(
+    date_from: Optional[date] = Query(None),
+    date_to:   Optional[date] = Query(None),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_manager),
+):
+    from datetime import date as dt
+    period_from = date_from or dt(dt.today().year, 1, 1)
+    period_to   = date_to   or dt(dt.today().year, 12, 31)
+
+    q = db.query(Transaction).filter(
+        Transaction.date >= period_from,
+        Transaction.date <= period_to,
+    )
+    all_tx   = q.all()
+    income   = [t for t in all_tx if t.type == TransactionType.income]
+    expenses = [t for t in all_tx if t.type == TransactionType.expense]
+
+    def group_by_category(txs):
+        cats = {}
+        for t in txs:
+            cats.setdefault(t.category, 0)
+            cats[t.category] += t.amount
+        return [ProfitLossLine(category=k, total=v) for k, v in sorted(cats.items(), key=lambda x: -x[1])]
+
+    total_in  = sum(t.amount for t in income)
+    total_out = sum(t.amount for t in expenses)
+
+    tva_collected  = sum(t.tva_amount or 0 for t in income   if t.is_tva_applicable)
+    tva_deductible = sum(t.tva_amount or 0 for t in expenses if t.is_tva_applicable)
+
+    return ProfitLossReport(
+        period_from=period_from,
+        period_to=period_to,
+        income_lines=group_by_category(income),
+        total_income=total_in,
+        expense_lines=group_by_category(expenses),
+        total_expenses=total_out,
+        net_profit=total_in - total_out,
+        tva_collected=tva_collected,
+        tva_deductible=tva_deductible,
+        tva_due=tva_collected - tva_deductible,
     )
 
 # ── Expense breakdown by category ─────────────────
@@ -56,7 +110,7 @@ def expenses_by_category(
     q = db.query(Transaction).filter(Transaction.type == TransactionType.expense)
     if date_from: q = q.filter(Transaction.date >= date_from)
     if date_to:   q = q.filter(Transaction.date <= date_to)
-    txs = q.all()
+    txs   = q.all()
     total = sum(t.amount for t in txs) or 1
 
     cats: dict = {}
@@ -97,8 +151,8 @@ def expenses_by_worker(
         w = t.worker_name
         if w not in workers:
             workers[w] = {"total": 0, "count": 0, "cats": {}}
-        workers[w]["total"]  += t.amount
-        workers[w]["count"]  += 1
+        workers[w]["total"] += t.amount
+        workers[w]["count"] += 1
         if t.category not in workers[w]["cats"]:
             workers[w]["cats"][t.category] = {"total": 0, "count": 0}
         workers[w]["cats"][t.category]["total"] += t.amount
@@ -106,7 +160,7 @@ def expenses_by_worker(
 
     result = []
     for name, data in sorted(workers.items(), key=lambda x: -x[1]["total"]):
-        wt = data["total"] or 1
+        wt   = data["total"] or 1
         cats = [
             CategoryBreakdown(category=k, total=v["total"], count=v["count"], percent=round(v["total"]/wt*100,1))
             for k, v in sorted(data["cats"].items(), key=lambda x: -x[1]["total"])
