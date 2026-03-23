@@ -11,21 +11,22 @@ export default function ReportsPage() {
   const t = k => TR[lang][k]
   const { show, ToastEl } = useToast()
 
-  const [summary,     setSummary]     = useState(null)
-  const [byCat,       setByCat]       = useState([])
-  const [byWorker,    setByWorker]    = useState([])
-  const [dailyCash,   setDailyCash]   = useState([])
-  const [pl,          setPl]          = useState(null)
-  const [dateFrom,    setDateFrom]    = useState('')
-  const [dateTo,      setDateTo]      = useState('')
-  const [loading,     setLoading]     = useState(true)
-  const [cashModal,   setCashModal]   = useState(false)
-  const [cashDate,    setCashDate]    = useState(todayISO())
-  const [openBal,     setOpenBal]     = useState('')
-  const [closeBal,    setCloseBal]    = useState('')
-  const [cashMode,    setCashMode]    = useState('open')
-  const [cashLoading, setCashLoading] = useState(false)
-  const [cashError,   setCashError]   = useState('')
+  const [summary,      setSummary]      = useState(null)
+  const [byCat,        setByCat]        = useState([])
+  const [byWorker,     setByWorker]     = useState([])
+  const [dailyCash,    setDailyCash]    = useState([])
+  const [pl,           setPl]           = useState(null)
+  const [dateFrom,     setDateFrom]     = useState('')
+  const [dateTo,       setDateTo]       = useState('')
+  const [loading,      setLoading]      = useState(true)
+  const [expandWorker, setExpandWorker] = useState({})
+  const [cashModal,    setCashModal]    = useState(false)
+  const [cashDate,     setCashDate]     = useState(todayISO())
+  const [openBal,      setOpenBal]      = useState('')
+  const [closeBal,     setCloseBal]     = useState('')
+  const [cashMode,     setCashMode]     = useState('open')
+  const [cashLoading,  setCashLoading]  = useState(false)
+  const [cashError,    setCashError]    = useState('')
 
   const load = async () => {
     setLoading(true)
@@ -53,6 +54,8 @@ export default function ReportsPage() {
   }
 
   useEffect(() => { load() }, [dateFrom, dateTo])
+
+  const toggleWorker = (name) => setExpandWorker(prev => ({ ...prev, [name]: !prev[name] }))
 
   const exportPDF = async () => {
     const { default: jsPDF }     = await import('jspdf')
@@ -104,28 +107,21 @@ export default function ReportsPage() {
       })
     }
 
-    // P&L section in PDF
     if (pl) {
       let y = (doc.lastAutoTable?.finalY || 90) + 12
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(11)
       doc.setTextColor(...navy)
-      doc.text(lang === 'fr' ? 'Compte de Resultat' : 'Profit & Loss Statement', 14, y)
+      doc.text(lang === 'fr' ? 'Compte de Resultat' : 'Profit & Loss', 14, y)
       autoTable(doc, {
         startY: y + 4,
-        head: [[lang === 'fr' ? 'Rubrique' : 'Item', lang === 'fr' ? 'Montant (XAF)' : 'Amount (XAF)']],
+        head: [[lang === 'fr' ? 'Poste' : 'Item', lang === 'fr' ? 'Montant' : 'Amount']],
         body: [
-          ...(pl.income_lines.map(l => [
-            (lang === 'fr' ? 'Recette — ' : 'Income — ') + l.category,
-            formatAmount(l.total, 'XAF'),
-          ])),
-          [lang === 'fr' ? 'TOTAL RECETTES' : 'TOTAL INCOME', formatAmount(pl.total_income, 'XAF')],
+          ...pl.income_lines.map(l => [l.category, formatAmount(l.total, 'XAF')]),
+          [lang === 'fr' ? 'TOTAL ENTREES' : 'TOTAL INCOME', formatAmount(pl.total_income, 'XAF')],
           ['', ''],
-          ...(pl.expense_lines.map(l => [
-            (lang === 'fr' ? 'Charge — ' : 'Expense — ') + l.category,
-            formatAmount(l.total, 'XAF'),
-          ])),
-          [lang === 'fr' ? 'TOTAL CHARGES' : 'TOTAL EXPENSES', formatAmount(pl.total_expenses, 'XAF')],
+          ...pl.expense_lines.map(l => [l.category, formatAmount(l.total, 'XAF')]),
+          [lang === 'fr' ? 'TOTAL SORTIES' : 'TOTAL EXPENSES', formatAmount(pl.total_expenses, 'XAF')],
           ['', ''],
           [lang === 'fr' ? 'BENEFICE NET' : 'NET PROFIT', formatAmount(pl.net_profit, 'XAF')],
           ['', ''],
@@ -156,7 +152,7 @@ export default function ReportsPage() {
         tx.created_by_user?.full_name || '-',
         tx.type === 'income' ? (lang === 'fr' ? 'Entree' : 'Income') : (lang === 'fr' ? 'Sortie' : 'Expense'),
         (tx.type === 'expense' ? '-' : '+') + formatAmount(tx.amount, tx.currency),
-        tx.tva_amount ? formatAmount(tx.tva_amount, 'XAF') : '—',
+        tx.tva_amount ? formatAmount(tx.tva_amount, tx.currency) : '—',
       ]),
       styles: { fontSize: 8, cellPadding: 3 },
       headStyles: { fillColor: navy, textColor: gold, fontStyle: 'bold' },
@@ -221,17 +217,17 @@ export default function ReportsPage() {
 
     if (pl) {
       const plRows = [
-        ...pl.income_lines.map(l => ({ [lang === 'fr' ? 'Rubrique' : 'Item']: (lang === 'fr' ? 'Recette — ' : 'Income — ') + l.category, [lang === 'fr' ? 'Montant' : 'Amount']: l.total })),
-        { [lang === 'fr' ? 'Rubrique' : 'Item']: lang === 'fr' ? 'TOTAL RECETTES' : 'TOTAL INCOME',   [lang === 'fr' ? 'Montant' : 'Amount']: pl.total_income },
-        { [lang === 'fr' ? 'Rubrique' : 'Item']: '',  [lang === 'fr' ? 'Montant' : 'Amount']: '' },
-        ...pl.expense_lines.map(l => ({ [lang === 'fr' ? 'Rubrique' : 'Item']: (lang === 'fr' ? 'Charge — ' : 'Expense — ') + l.category, [lang === 'fr' ? 'Montant' : 'Amount']: l.total })),
-        { [lang === 'fr' ? 'Rubrique' : 'Item']: lang === 'fr' ? 'TOTAL CHARGES'  : 'TOTAL EXPENSES', [lang === 'fr' ? 'Montant' : 'Amount']: pl.total_expenses },
-        { [lang === 'fr' ? 'Rubrique' : 'Item']: '',  [lang === 'fr' ? 'Montant' : 'Amount']: '' },
-        { [lang === 'fr' ? 'Rubrique' : 'Item']: lang === 'fr' ? 'BENEFICE NET'   : 'NET PROFIT',     [lang === 'fr' ? 'Montant' : 'Amount']: pl.net_profit },
-        { [lang === 'fr' ? 'Rubrique' : 'Item']: '',  [lang === 'fr' ? 'Montant' : 'Amount']: '' },
-        { [lang === 'fr' ? 'Rubrique' : 'Item']: lang === 'fr' ? 'TVA collectee'  : 'TVA collected',  [lang === 'fr' ? 'Montant' : 'Amount']: pl.tva_collected },
-        { [lang === 'fr' ? 'Rubrique' : 'Item']: lang === 'fr' ? 'TVA deductible' : 'TVA deductible', [lang === 'fr' ? 'Montant' : 'Amount']: pl.tva_deductible },
-        { [lang === 'fr' ? 'Rubrique' : 'Item']: lang === 'fr' ? 'TVA DUE'        : 'TVA DUE',        [lang === 'fr' ? 'Montant' : 'Amount']: pl.tva_due },
+        ...pl.income_lines.map(l  => ({ [lang === 'fr' ? 'Poste' : 'Item']: l.category, [lang === 'fr' ? 'Montant' : 'Amount']: l.total })),
+        { [lang === 'fr' ? 'Poste' : 'Item']: lang === 'fr' ? 'TOTAL ENTREES'  : 'TOTAL INCOME',    [lang === 'fr' ? 'Montant' : 'Amount']: pl.total_income },
+        { [lang === 'fr' ? 'Poste' : 'Item']: '',                                                    [lang === 'fr' ? 'Montant' : 'Amount']: '' },
+        ...pl.expense_lines.map(l => ({ [lang === 'fr' ? 'Poste' : 'Item']: l.category, [lang === 'fr' ? 'Montant' : 'Amount']: l.total })),
+        { [lang === 'fr' ? 'Poste' : 'Item']: lang === 'fr' ? 'TOTAL SORTIES'  : 'TOTAL EXPENSES',  [lang === 'fr' ? 'Montant' : 'Amount']: pl.total_expenses },
+        { [lang === 'fr' ? 'Poste' : 'Item']: '',                                                    [lang === 'fr' ? 'Montant' : 'Amount']: '' },
+        { [lang === 'fr' ? 'Poste' : 'Item']: lang === 'fr' ? 'BENEFICE NET'   : 'NET PROFIT',      [lang === 'fr' ? 'Montant' : 'Amount']: pl.net_profit },
+        { [lang === 'fr' ? 'Poste' : 'Item']: '',                                                    [lang === 'fr' ? 'Montant' : 'Amount']: '' },
+        { [lang === 'fr' ? 'Poste' : 'Item']: lang === 'fr' ? 'TVA collectee'  : 'TVA collected',   [lang === 'fr' ? 'Montant' : 'Amount']: pl.tva_collected },
+        { [lang === 'fr' ? 'Poste' : 'Item']: lang === 'fr' ? 'TVA deductible' : 'TVA deductible',  [lang === 'fr' ? 'Montant' : 'Amount']: pl.tva_deductible },
+        { [lang === 'fr' ? 'Poste' : 'Item']: lang === 'fr' ? 'TVA DUE'        : 'TVA DUE',         [lang === 'fr' ? 'Montant' : 'Amount']: pl.tva_due },
       ]
       const ws3 = XLSX.utils.json_to_sheet(plRows)
       XLSX.utils.book_append_sheet(wb, ws3, lang === 'fr' ? 'Compte de Resultat' : 'P&L')
@@ -319,7 +315,7 @@ export default function ReportsPage() {
         )}
       </div>
 
-      {/* KPI cards */}
+      {/* KPI cards — same as dashboard */}
       {summary && (
         <div className="summary-grid" style={{ marginBottom:40 }}>
           <div className="summary-card">
@@ -342,105 +338,93 @@ export default function ReportsPage() {
           <div className="summary-card">
             <div className="summary-label">{t('dash_card_staff')}</div>
             <div className="summary-value negative">{formatAmount(summary.staff_spending, 'XAF')}</div>
-            <div className="summary-sub">{summary.transaction_count} operations</div>
+            <div className="summary-sub">{summary.transaction_count} {lang === 'fr' ? 'opérations' : 'operations'}</div>
           </div>
         </div>
       )}
 
       {/* TVA summary cards */}
       {summary && (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:16, marginBottom:40 }}>
-          <div className="summary-card" style={{ borderLeft:'3px solid var(--gold)' }}>
-            <div className="summary-label">{t('tva_collected')}</div>
-            <div className="summary-value gold">{formatAmount(summary.tva_collected, 'XAF')}</div>
-            <div className="summary-sub">{lang === 'fr' ? 'Sur recettes' : 'On income'}</div>
-          </div>
-          <div className="summary-card" style={{ borderLeft:'3px solid var(--muted)' }}>
-            <div className="summary-label">{t('tva_deductible')}</div>
-            <div className="summary-value">{formatAmount(summary.tva_deductible, 'XAF')}</div>
-            <div className="summary-sub">{lang === 'fr' ? 'Sur charges' : 'On expenses'}</div>
-          </div>
-          <div className="summary-card" style={{ borderLeft:'3px solid var(--red)' }}>
-            <div className="summary-label">{t('tva_due')}</div>
-            <div className={`summary-value ${summary.tva_due > 0 ? 'negative' : 'positive'}`}>
-              {formatAmount(summary.tva_due, 'XAF')}
+        <>
+          <div className="section-label">{lang === 'fr' ? 'Récapitulatif TVA (19.25%)' : 'TVA Summary (19.25%)'}</div>
+          <div className="summary-grid" style={{ marginBottom:40 }}>
+            <div className="summary-card">
+              <div className="summary-label">{lang === 'fr' ? 'TVA collectée' : 'TVA collected'}</div>
+              <div className="summary-value positive">{formatAmount(summary.tva_collected, 'XAF')}</div>
+              <div className="summary-sub">{lang === 'fr' ? 'Sur les entrées' : 'On income'}</div>
             </div>
-            <div className="summary-sub">{lang === 'fr' ? 'À reverser à l\'état' : 'Payable to tax authority'}</div>
+            <div className="summary-card">
+              <div className="summary-label">{lang === 'fr' ? 'TVA déductible' : 'TVA deductible'}</div>
+              <div className="summary-value negative">{formatAmount(summary.tva_deductible, 'XAF')}</div>
+              <div className="summary-sub">{lang === 'fr' ? 'Sur les sorties' : 'On expenses'}</div>
+            </div>
+            <div className="summary-card">
+              <div className="summary-label">{lang === 'fr' ? 'TVA due' : 'TVA due'}</div>
+              <div className={`summary-value ${summary.tva_due >= 0 ? 'gold' : 'negative'}`}>
+                {formatAmount(Math.abs(summary.tva_due), 'XAF')}
+              </div>
+              <div className="summary-sub">{lang === 'fr' ? 'À reverser à l\'État' : 'Payable to tax authority'}</div>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
-      {/* P&L Statement */}
+      {/* P&L section */}
       {pl && (
         <>
-          <div className="section-label">{t('rep_pl_title')}</div>
-          <div style={{ background:'var(--navy-light)', border:'1px solid var(--navy-border)', padding:28, marginBottom:40 }}>
-            <div style={{ fontSize:11, color:'var(--muted)', marginBottom:20, letterSpacing:'0.5px' }}>
-              {formatDate(pl.period_from, lang)} — {formatDate(pl.period_to, lang)}
-            </div>
-
-            {/* Income lines */}
-            <div style={{ marginBottom:16 }}>
-              <div style={{ fontSize:10, letterSpacing:'2px', textTransform:'uppercase', color:'var(--gold)', marginBottom:10 }}>
-                {lang === 'fr' ? 'Recettes' : 'Income'}
+          <div className="section-label">{lang === 'fr' ? 'Compte de résultat' : 'Profit & Loss'}</div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:24, marginBottom:40 }}>
+            {/* Income */}
+            <div className="card" style={{ padding:24 }}>
+              <div style={{ fontSize:10, letterSpacing:'2px', textTransform:'uppercase', color:'var(--green)', marginBottom:16 }}>
+                {lang === 'fr' ? 'Entrées par catégorie' : 'Income by category'}
               </div>
               {pl.income_lines.map(l => (
-                <div key={l.category} style={{ display:'flex', justifyContent:'space-between', padding:'6px 0', borderBottom:'1px solid var(--navy-border)', fontSize:13 }}>
-                  <span style={{ color:'var(--white-dim)', textTransform:'capitalize' }}>{l.category}</span>
-                  <span style={{ color:'var(--green)', fontFamily:'var(--font-serif)', fontSize:15 }}>{formatAmount(l.total, 'XAF')}</span>
+                <div key={l.category} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderBottom:'1px solid var(--navy-border)' }}>
+                  <span style={{ fontSize:13, color:'var(--white-dim)', textTransform:'capitalize' }}>{l.category}</span>
+                  <span style={{ fontFamily:'var(--font-serif)', fontSize:15, color:'var(--green)' }}>+{formatAmount(l.total, 'XAF')}</span>
                 </div>
               ))}
-              <div style={{ display:'flex', justifyContent:'space-between', padding:'10px 0', fontSize:14, fontWeight:500 }}>
-                <span>{lang === 'fr' ? 'Total recettes' : 'Total income'}</span>
-                <span style={{ color:'var(--green)', fontFamily:'var(--font-serif)', fontSize:17 }}>{formatAmount(pl.total_income, 'XAF')}</span>
+              <div style={{ display:'flex', justifyContent:'space-between', padding:'12px 0 0', marginTop:4 }}>
+                <span style={{ fontSize:12, letterSpacing:'1px', textTransform:'uppercase', color:'var(--muted)' }}>{lang === 'fr' ? 'Total entrées' : 'Total income'}</span>
+                <span style={{ fontFamily:'var(--font-serif)', fontSize:18, color:'var(--green)' }}>+{formatAmount(pl.total_income, 'XAF')}</span>
               </div>
             </div>
 
-            {/* Expense lines */}
-            <div style={{ marginBottom:16 }}>
-              <div style={{ fontSize:10, letterSpacing:'2px', textTransform:'uppercase', color:'var(--muted)', marginBottom:10 }}>
-                {lang === 'fr' ? 'Charges' : 'Expenses'}
+            {/* Expenses */}
+            <div className="card" style={{ padding:24 }}>
+              <div style={{ fontSize:10, letterSpacing:'2px', textTransform:'uppercase', color:'var(--red)', marginBottom:16 }}>
+                {lang === 'fr' ? 'Sorties par catégorie' : 'Expenses by category'}
               </div>
               {pl.expense_lines.map(l => (
-                <div key={l.category} style={{ display:'flex', justifyContent:'space-between', padding:'6px 0', borderBottom:'1px solid var(--navy-border)', fontSize:13 }}>
-                  <span style={{ color:'var(--white-dim)', textTransform:'capitalize' }}>{l.category}</span>
-                  <span style={{ color:'var(--red)', fontFamily:'var(--font-serif)', fontSize:15 }}>{formatAmount(l.total, 'XAF')}</span>
+                <div key={l.category} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderBottom:'1px solid var(--navy-border)' }}>
+                  <span style={{ fontSize:13, color:'var(--white-dim)', textTransform:'capitalize' }}>{l.category}</span>
+                  <span style={{ fontFamily:'var(--font-serif)', fontSize:15, color:'var(--red)' }}>-{formatAmount(l.total, 'XAF')}</span>
                 </div>
               ))}
-              <div style={{ display:'flex', justifyContent:'space-between', padding:'10px 0', fontSize:14, fontWeight:500 }}>
-                <span>{lang === 'fr' ? 'Total charges' : 'Total expenses'}</span>
-                <span style={{ color:'var(--red)', fontFamily:'var(--font-serif)', fontSize:17 }}>{formatAmount(pl.total_expenses, 'XAF')}</span>
+              <div style={{ display:'flex', justifyContent:'space-between', padding:'12px 0 0', marginTop:4 }}>
+                <span style={{ fontSize:12, letterSpacing:'1px', textTransform:'uppercase', color:'var(--muted)' }}>{lang === 'fr' ? 'Total sorties' : 'Total expenses'}</span>
+                <span style={{ fontFamily:'var(--font-serif)', fontSize:18, color:'var(--red)' }}>-{formatAmount(pl.total_expenses, 'XAF')}</span>
               </div>
             </div>
+          </div>
 
-            {/* Net profit */}
-            <div style={{ display:'flex', justifyContent:'space-between', padding:'14px 20px', background: pl.net_profit >= 0 ? 'rgba(74,199,138,0.08)' : 'rgba(224,90,78,0.08)', border:`1px solid ${pl.net_profit >= 0 ? 'rgba(74,199,138,0.3)' : 'rgba(224,90,78,0.3)'}`, marginBottom:20 }}>
-              <span style={{ fontSize:14, fontWeight:500, letterSpacing:'1px', textTransform:'uppercase' }}>
-                {lang === 'fr' ? 'Bénéfice net' : 'Net profit'}
-              </span>
-              <span style={{ fontFamily:'var(--font-serif)', fontSize:22, color: pl.net_profit >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                {pl.net_profit >= 0 ? '+' : ''}{formatAmount(pl.net_profit, 'XAF')}
-              </span>
+          {/* Net profit + TVA due */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:24, marginBottom:40 }}>
+            <div className="summary-card" style={{ borderLeft:'3px solid var(--gold)' }}>
+              <div className="summary-label">{lang === 'fr' ? 'Bénéfice net' : 'Net profit'}</div>
+              <div className={`summary-value ${pl.net_profit >= 0 ? 'gold' : 'negative'}`}>
+                {pl.net_profit >= 0 ? '+' : '-'}{formatAmount(Math.abs(pl.net_profit), 'XAF')}
+              </div>
+              <div className="summary-sub">
+                {lang === 'fr' ? `Période : ${pl.period_from} → ${pl.period_to}` : `Period: ${pl.period_from} → ${pl.period_to}`}
+              </div>
             </div>
-
-            {/* TVA summary */}
-            <div style={{ borderTop:'1px solid var(--navy-border)', paddingTop:16 }}>
-              <div style={{ fontSize:10, letterSpacing:'2px', textTransform:'uppercase', color:'var(--gold)', marginBottom:10 }}>
-                TVA
-              </div>
-              <div style={{ display:'flex', justifyContent:'space-between', padding:'5px 0', fontSize:13 }}>
-                <span style={{ color:'var(--white-dim)' }}>{lang === 'fr' ? 'TVA collectée (recettes)' : 'TVA collected (income)'}</span>
-                <span style={{ color:'var(--gold)', fontFamily:'var(--font-serif)' }}>{formatAmount(pl.tva_collected, 'XAF')}</span>
-              </div>
-              <div style={{ display:'flex', justifyContent:'space-between', padding:'5px 0', fontSize:13 }}>
-                <span style={{ color:'var(--white-dim)' }}>{lang === 'fr' ? 'TVA déductible (charges)' : 'TVA deductible (expenses)'}</span>
-                <span style={{ color:'var(--muted)', fontFamily:'var(--font-serif)' }}>{formatAmount(pl.tva_deductible, 'XAF')}</span>
-              </div>
-              <div style={{ display:'flex', justifyContent:'space-between', padding:'10px 0', fontSize:14, fontWeight:500, borderTop:'1px solid var(--navy-border)', marginTop:6 }}>
-                <span style={{ color:'var(--gold)' }}>{lang === 'fr' ? 'TVA nette due' : 'Net TVA due'}</span>
-                <span style={{ fontFamily:'var(--font-serif)', fontSize:18, color: pl.tva_due > 0 ? 'var(--red)' : 'var(--green)' }}>
-                  {formatAmount(pl.tva_due, 'XAF')}
-                </span>
+            <div className="summary-card" style={{ borderLeft:'3px solid var(--gold)' }}>
+              <div className="summary-label">{lang === 'fr' ? 'TVA due à l\'État' : 'TVA payable'}</div>
+              <div className="summary-value gold">{formatAmount(pl.tva_due, 'XAF')}</div>
+              <div className="summary-sub">
+                {lang === 'fr' ? `Collectée ${formatAmount(pl.tva_collected,'XAF')} − Déductible ${formatAmount(pl.tva_deductible,'XAF')}` : `Collected ${formatAmount(pl.tva_collected,'XAF')} − Deductible ${formatAmount(pl.tva_deductible,'XAF')}`}
               </div>
             </div>
           </div>
@@ -490,35 +474,84 @@ export default function ReportsPage() {
         </table>
       </div>
 
-      {/* Worker breakdown */}
+      {/* Per-staff spending breakdown — expandable */}
       <div className="section-label">{t('rep_by_worker')}</div>
-      <div className="table-wrap" style={{ marginBottom:40 }}>
-        <table>
-          <thead>
-            <tr>
-              <th>{t('rep_col_worker')}</th>
-              <th className="right">{t('rep_col_txs')}</th>
-              <th className="right">{t('rep_col_total')}</th>
-              <th>{t('rep_col_top_cat')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {byWorker.length === 0 ? (
-              <tr><td colSpan={4}><div className="empty-state"><p>{t('rep_no_data')}</p></div></td></tr>
-            ) : byWorker.map(w => {
-              const topCat = w.categories[0]
-              const def    = topCat ? (EXPENSE_CATS[topCat.category] || EXPENSE_CATS.autre) : null
-              return (
-                <tr key={w.worker_name}>
-                  <td><span style={{ fontFamily:'var(--font-serif)', fontSize:15, fontWeight:500 }}>{w.worker_name}</span></td>
-                  <td className="right td-muted">{w.count}</td>
-                  <td className="right"><span className="td-amount expense">{formatAmount(w.total, 'XAF')}</span></td>
-                  <td>{def && <span className={`badge ${def.badge}`}>{lang === 'fr' ? def.label : def.labelEn}</span>}</td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+      <div style={{ marginBottom:40 }}>
+        {byWorker.length === 0 ? (
+          <div className="empty-state"><p>{t('rep_no_data')}</p></div>
+        ) : byWorker.map(w => (
+          <div key={w.worker_name} className="card" style={{ marginBottom:12, padding:0, overflow:'hidden' }}>
+            {/* Worker header row — clickable to expand */}
+            <div
+              onClick={() => toggleWorker(w.worker_name)}
+              style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 24px', cursor:'pointer' }}
+            >
+              <div style={{ display:'flex', alignItems:'center', gap:16 }}>
+                <div style={{ width:36, height:36, borderRadius:'50%', background:'var(--navy-border)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-serif)', fontSize:16, color:'var(--gold)' }}>
+                  {w.worker_name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <div style={{ fontFamily:'var(--font-serif)', fontSize:16, fontWeight:500 }}>{w.worker_name}</div>
+                  <div style={{ fontSize:11, color:'var(--muted)' }}>{w.count} {w.count === 1 ? t('exp_transactions') : t('exp_transactions_pl')}</div>
+                </div>
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:20 }}>
+                <span style={{ fontFamily:'var(--font-serif)', fontSize:18, color:'var(--red)' }}>
+                  -{formatAmount(w.total, 'XAF')}
+                </span>
+                <span style={{ color:'var(--muted)', fontSize:16 }}>{expandWorker[w.worker_name] ? '▲' : '▼'}</span>
+              </div>
+            </div>
+
+            {/* Expanded category breakdown */}
+            {expandWorker[w.worker_name] && (
+              <div style={{ borderTop:'1px solid var(--navy-border)', padding:'0 24px 16px' }}>
+                <table style={{ width:'100%', marginTop:12 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign:'left', fontSize:10, letterSpacing:'1.5px', textTransform:'uppercase', color:'var(--muted)', paddingBottom:8 }}>
+                        {lang === 'fr' ? 'Catégorie' : 'Category'}
+                      </th>
+                      <th style={{ textAlign:'right', fontSize:10, letterSpacing:'1.5px', textTransform:'uppercase', color:'var(--muted)', paddingBottom:8 }}>
+                        {lang === 'fr' ? 'Transactions' : 'Transactions'}
+                      </th>
+                      <th style={{ textAlign:'right', fontSize:10, letterSpacing:'1.5px', textTransform:'uppercase', color:'var(--muted)', paddingBottom:8 }}>
+                        {lang === 'fr' ? 'Total' : 'Total'}
+                      </th>
+                      <th style={{ textAlign:'right', fontSize:10, letterSpacing:'1.5px', textTransform:'uppercase', color:'var(--muted)', paddingBottom:8 }}>
+                        {lang === 'fr' ? 'Part' : 'Share'}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {w.categories.map(c => {
+                      const def = EXPENSE_CATS[c.category] || EXPENSE_CATS.autre
+                      return (
+                        <tr key={c.category}>
+                          <td style={{ padding:'6px 0' }}>
+                            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                              <div style={{ width:8, height:8, background:def.color, flexShrink:0 }} />
+                              <span style={{ fontSize:13 }}>{lang === 'fr' ? def.label : def.labelEn}</span>
+                            </div>
+                          </td>
+                          <td style={{ textAlign:'right', fontSize:13, color:'var(--muted)' }}>{c.count}</td>
+                          <td style={{ textAlign:'right' }}>
+                            <span style={{ fontFamily:'var(--font-serif)', fontSize:14, color:'var(--red)' }}>
+                              -{formatAmount(c.total, 'XAF')}
+                            </span>
+                          </td>
+                          <td style={{ textAlign:'right', color:'var(--gold)', fontFamily:'var(--font-serif)', fontSize:14 }}>
+                            {c.percent}%
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ))}
       </div>
 
       {/* Daily cash register */}
@@ -532,7 +565,6 @@ export default function ReportsPage() {
           : 'Each morning, click "Open register" and enter the physical cash amount. At end of day, click "Close register" and enter the remaining amount. The variance shows if money is missing.'
         }
       </div>
-
       <div className="table-wrap">
         <table>
           <thead>
@@ -584,27 +616,12 @@ export default function ReportsPage() {
       {/* Cash modal */}
       {cashModal && createPortal(
         <div
-          style={{
-            position:'fixed', inset:0, top:0, left:0, right:0, bottom:0,
-            width:'100vw', height:'100vh',
-            background:'rgba(5,10,22,0.88)',
-            zIndex:9999,
-            display:'flex', alignItems:'center', justifyContent:'center',
-            padding:'40px 20px', overflowY:'auto',
-          }}
+          style={{ position:'fixed', inset:0, top:0, left:0, right:0, bottom:0, width:'100vw', height:'100vh', background:'rgba(5,10,22,0.88)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:'40px 20px', overflowY:'auto' }}
           onClick={e => e.target === e.currentTarget && setCashModal(false)}
         >
-          <div style={{
-            background:'var(--navy-light)', border:'1px solid var(--navy-border)',
-            width:'100%', maxWidth:480, padding:40, position:'relative',
-          }}>
-            <button
-              onClick={() => setCashModal(false)}
-              style={{ position:'absolute', top:16, right:16, background:'none', border:'none', color:'var(--muted)', fontSize:22, cursor:'pointer' }}
-            >x</button>
-            <div style={{ fontSize:10, letterSpacing:'2.5px', textTransform:'uppercase', color:'var(--gold)', marginBottom:8 }}>
-              {t('cash_eyebrow')}
-            </div>
+          <div style={{ background:'var(--navy-light)', border:'1px solid var(--navy-border)', width:'100%', maxWidth:480, padding:40, position:'relative' }}>
+            <button onClick={() => setCashModal(false)} style={{ position:'absolute', top:16, right:16, background:'none', border:'none', color:'var(--muted)', fontSize:22, cursor:'pointer' }}>x</button>
+            <div style={{ fontSize:10, letterSpacing:'2.5px', textTransform:'uppercase', color:'var(--gold)', marginBottom:8 }}>{t('cash_eyebrow')}</div>
             <h2 style={{ fontFamily:'var(--font-serif)', fontSize:28, fontWeight:400, marginBottom:8 }}>
               {cashMode === 'open' ? t('cash_title_open') : t('cash_title_close')}
             </h2>
