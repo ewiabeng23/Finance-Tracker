@@ -30,8 +30,8 @@ export const reportsAPI = {
   summary:    (params = {}) => api.get('/reports/summary', { params }),
   byCategory: (params = {}) => api.get('/reports/expenses/by-category', { params }),
   byWorker:   (params = {}) => api.get('/reports/expenses/by-worker', { params }),
+  profitLoss: (params = {}) => api.get('/reports/profit-loss', { params }),
   dailyCash:  ()             => api.get('/reports/daily-cash'),
   openDay:    (data)         => api.post('/reports/daily-cash', data),
   closeDay:   (date, data)   => api.patch(`/reports/daily-cash/${date}/close`, data),
-  profitLoss: (params = {}) => api.get('/reports/profit-loss', { params }),
 }
