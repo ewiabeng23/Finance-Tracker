@@ -342,7 +342,6 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
         {/* Receipt upload */}
         <div className="form-group">
           <label>{lang === 'fr' ? 'Pièce justificative (optionnel)' : 'Receipt / attachment (optional)'}</label>
-
           {!uploadPreview ? (
             <label style={{
               display:'flex', alignItems:'center', justifyContent:'center', gap:10,
