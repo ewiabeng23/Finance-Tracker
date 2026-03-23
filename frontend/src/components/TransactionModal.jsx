@@ -6,26 +6,30 @@ import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LanguageContext'
 import { TR } from '../api/translations'
 
+const TVA_RATE = 0.1925
+
 export default function TransactionModal({ onClose, onSaved, initial = null, defaultType = 'income' }) {
   const { isManager, user } = useAuth()
   const { lang } = useLang()
   const t = k => TR[lang][k]
   const isEdit = !!initial
 
-  const [type,          setType]          = useState(initial?.type || defaultType || 'income')
-  const [date,          setDate]          = useState(initial?.date || todayISO())
-  const [reference,     setReference]     = useState(initial?.reference || genRef())
-  const [amount,        setAmount]        = useState(initial?.amount || '')
-  const [currency,      setCurrency]      = useState(initial?.currency || 'XAF')
-  const [category,      setCategory]      = useState(initial?.category || (defaultType === 'expense' ? 'transport' : 'prime'))
-  const [description,   setDescription]   = useState(initial?.description || '')
-  const [note,          setNote]          = useState(initial?.note || '')
-  const [customerId,    setCustomerId]    = useState(initial?.customer_id || '')
-  const [workerName,    setWorkerName]    = useState(initial?.worker_name || '')
-  const [paymentMethod, setPaymentMethod] = useState(initial?.payment_method || 'cash')
-  const [customers,     setCustomers]     = useState([])
-  const [loading,       setLoading]       = useState(false)
-  const [error,         setError]         = useState('')
+  const [type,             setType]            = useState(initial?.type || defaultType || 'income')
+  const [date,             setDate]            = useState(initial?.date || todayISO())
+  const [reference,        setReference]       = useState(initial?.reference || genRef())
+  const [amount,           setAmount]          = useState(initial?.amount || '')
+  const [currency,         setCurrency]        = useState(initial?.currency || 'XAF')
+  const [category,         setCategory]        = useState(initial?.category || (defaultType === 'expense' ? 'transport' : 'prime'))
+  const [description,      setDescription]     = useState(initial?.description || '')
+  const [note,             setNote]            = useState(initial?.note || '')
+  const [customerId,       setCustomerId]      = useState(initial?.customer_id || '')
+  const [workerName,       setWorkerName]      = useState(initial?.worker_name || '')
+  const [paymentMethod,    setPaymentMethod]   = useState(initial?.payment_method || 'cash')
+  const [isTvaApplicable,  setIsTvaApplicable] = useState(initial?.is_tva_applicable ?? true)
+  const [tvaAmount,        setTvaAmount]       = useState(initial?.tva_amount || 0)
+  const [customers,        setCustomers]       = useState([])
+  const [loading,          setLoading]         = useState(false)
+  const [error,            setError]           = useState('')
 
   useEffect(() => {
     customersAPI.list().then(r => setCustomers(r.data)).catch(() => {})
@@ -35,16 +39,31 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
     if (!isEdit) setCategory(type === 'income' ? 'prime' : 'transport')
   }, [type])
 
+  // Auto-calculate TVA when amount changes
+  useEffect(() => {
+    if (isTvaApplicable && amount && parseFloat(amount) > 0) {
+      const computed = parseFloat((parseFloat(amount) * TVA_RATE / (1 + TVA_RATE)).toFixed(2))
+      setTvaAmount(computed)
+    } else {
+      setTvaAmount(0)
+    }
+  }, [amount, isTvaApplicable])
+
   const submit = async () => {
     if (!amount || parseFloat(amount) <= 0) { setError(t('modal_err_amount')); return }
     if (!description.trim()) { setError(t('modal_err_desc')); return }
     setLoading(true); setError('')
     const payload = {
       reference, date, type, category,
-      amount: parseFloat(amount), currency, description, note: note || null,
-      customer_id: customerId ? parseInt(customerId) : null,
-      worker_name: type === 'expense' ? (workerName || user?.full_name) : null,
-      payment_method: paymentMethod,
+      amount:            parseFloat(amount),
+      currency,
+      description,
+      note:              note || null,
+      customer_id:       customerId ? parseInt(customerId) : null,
+      worker_name:       type === 'expense' ? (workerName || user?.full_name) : null,
+      payment_method:    paymentMethod,
+      is_tva_applicable: isTvaApplicable,
+      tva_amount:        isTvaApplicable ? tvaAmount : 0,
     }
     try {
       if (isEdit) await transactionsAPI.update(initial.id, payload)
@@ -127,15 +146,15 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
         )}
 
         {type === 'expense' && isManager && (
-  <div className="form-group">
-    <label>{t('modal_worker')}</label>
-    <input
-      value={workerName}
-      onChange={e => setWorkerName(e.target.value)}
-      placeholder={user?.full_name}
-    />
-  </div>
-)}
+          <div className="form-group">
+            <label>{t('modal_worker')}</label>
+            <input
+              value={workerName}
+              onChange={e => setWorkerName(e.target.value)}
+              placeholder={user?.full_name}
+            />
+          </div>
+        )}
 
         <div className="form-row">
           <div className="form-group">
@@ -168,6 +187,55 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
         <div className="form-group">
           <label>{t('modal_amount')}</label>
           <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" min="0" step="0.01" />
+        </div>
+
+        {/* TVA section */}
+        <div style={{ background:'rgba(201,168,76,0.06)', border:'1px solid rgba(201,168,76,0.2)', padding:'16px 20px', marginBottom:20 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: isTvaApplicable ? 12 : 0 }}>
+            <label style={{ margin:0, fontSize:12, letterSpacing:'1px', textTransform:'uppercase', color:'var(--gold)' }}>
+              {t('modal_tva_label')}
+            </label>
+            <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', margin:0 }}>
+              <span style={{ fontSize:12, color:'var(--muted)' }}>
+                {isTvaApplicable ? t('modal_tva_on') : t('modal_tva_off')}
+              </span>
+              <div
+                onClick={() => setIsTvaApplicable(v => !v)}
+                style={{
+                  width:36, height:20, borderRadius:10, cursor:'pointer',
+                  background: isTvaApplicable ? 'var(--gold)' : 'var(--navy-border)',
+                  position:'relative', transition:'background 0.2s',
+                }}
+              >
+                <div style={{
+                  position:'absolute', top:2,
+                  left: isTvaApplicable ? 18 : 2,
+                  width:16, height:16, borderRadius:'50%',
+                  background:'var(--white)', transition:'left 0.2s',
+                }} />
+              </div>
+            </label>
+          </div>
+          {isTvaApplicable && (
+            <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+              <div className="form-group" style={{ flex:1, marginBottom:0 }}>
+                <label style={{ fontSize:11 }}>{t('modal_tva_amount')} (19.25%)</label>
+                <input
+                  type="number"
+                  value={tvaAmount}
+                  onChange={e => setTvaAmount(parseFloat(e.target.value) || 0)}
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+              <div style={{ fontSize:11, color:'var(--muted)', paddingTop:20 }}>
+                {t('modal_tva_excl')}:{' '}
+                <span style={{ color:'var(--white)', fontFamily:'var(--font-serif)', fontSize:14 }}>
+                  {amount ? (parseFloat(amount) - tvaAmount).toLocaleString() : '0'} {currency}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="form-group">
