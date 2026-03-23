@@ -6,7 +6,25 @@ import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LanguageContext'
 import { TR } from '../api/translations'
 
-const TVA_RATE = 0.1925
+const TVA_RATE     = 0.1925
+const SUPABASE_URL = 'https://jolguqquqzipepgubsur.supabase.co'
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvbGd1cXF1cXppcGVwZ3Vic3VyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1NzA0MDMsImV4cCI6MjA4OTE0NjQwM30.pBcDqtJrhxROUrRZNFt4HIjjEMzGfMkbp_IC5JxNwxE'
+
+async function uploadReceipt(file) {
+  const ext      = file.name.split('.').pop()
+  const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/receipts/${filename}`, {
+    method:  'POST',
+    headers: {
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type':  file.type,
+      'x-upsert':      'true',
+    },
+    body: file,
+  })
+  if (!res.ok) throw new Error('Upload failed')
+  return `${SUPABASE_URL}/storage/v1/object/public/receipts/${filename}`
+}
 
 export default function TransactionModal({ onClose, onSaved, initial = null, defaultType = 'income' }) {
   const { isManager, user } = useAuth()
@@ -28,6 +46,10 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
   const [isTvaApplicable,  setIsTvaApplicable]  = useState(initial?.is_tva_applicable ?? true)
   const [tvaAmount,        setTvaAmount]        = useState(initial?.tva_amount || 0)
   const [tvaManual,        setTvaManual]        = useState(false)
+  const [attachmentUrl,    setAttachmentUrl]    = useState(initial?.attachment_url || '')
+  const [uploadFile,       setUploadFile]       = useState(null)
+  const [uploadPreview,    setUploadPreview]    = useState(initial?.attachment_url || '')
+  const [uploading,        setUploading]        = useState(false)
   const [customers,        setCustomers]        = useState([])
   const [loading,          setLoading]          = useState(false)
   const [error,            setError]            = useState('')
@@ -40,15 +62,11 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
     if (!isEdit) setCategory(type === 'income' ? 'prime' : 'transport')
   }, [type])
 
-  // Auto-calculate TVA when amount or toggle changes
   useEffect(() => {
     if (!tvaManual && isTvaApplicable && amount && parseFloat(amount) > 0) {
-      const calculated = parseFloat((parseFloat(amount) * TVA_RATE).toFixed(2))
-      setTvaAmount(calculated)
+      setTvaAmount(parseFloat((parseFloat(amount) * TVA_RATE).toFixed(2)))
     }
-    if (!isTvaApplicable) {
-      setTvaAmount(0)
-    }
+    if (!isTvaApplicable) setTvaAmount(0)
   }, [amount, isTvaApplicable, tvaManual])
 
   const handleTvaChange = (val) => {
@@ -58,13 +76,44 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
 
   const handleAmountChange = (val) => {
     setAmount(val)
-    setTvaManual(false) // reset manual override when amount changes
+    setTvaManual(false)
+  }
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    setUploadFile(file)
+    if (file.type.startsWith('image/')) {
+      setUploadPreview(URL.createObjectURL(file))
+    } else {
+      setUploadPreview('pdf')
+    }
+  }
+
+  const removeAttachment = () => {
+    setUploadFile(null)
+    setUploadPreview('')
+    setAttachmentUrl('')
   }
 
   const submit = async () => {
     if (!amount || parseFloat(amount) <= 0) { setError(t('modal_err_amount')); return }
     if (!description.trim()) { setError(t('modal_err_desc')); return }
     setLoading(true); setError('')
+
+    let finalUrl = attachmentUrl
+    if (uploadFile) {
+      setUploading(true)
+      try {
+        finalUrl = await uploadReceipt(uploadFile)
+        setAttachmentUrl(finalUrl)
+      } catch (e) {
+        setError(lang === 'fr' ? 'Erreur lors du téléchargement du fichier' : 'File upload failed')
+        setLoading(false); setUploading(false); return
+      }
+      setUploading(false)
+    }
+
     const payload = {
       reference, date, type, category,
       amount:            parseFloat(amount),
@@ -76,6 +125,7 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
       payment_method:    paymentMethod,
       tva_amount:        isTvaApplicable ? tvaAmount : 0,
       is_tva_applicable: isTvaApplicable,
+      attachment_url:    finalUrl || null,
     }
     try {
       if (isEdit) await transactionsAPI.update(initial.id, payload)
@@ -289,11 +339,72 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
           <textarea rows={2} value={note} onChange={e => setNote(e.target.value)} placeholder={t('modal_note_placeholder')} />
         </div>
 
+        {/* Receipt upload */}
+        <div className="form-group">
+          <label>{lang === 'fr' ? 'Pièce justificative (optionnel)' : 'Receipt / attachment (optional)'}</label>
+
+          {!uploadPreview ? (
+            <label style={{
+              display:'flex', alignItems:'center', justifyContent:'center', gap:10,
+              border:'1px dashed var(--navy-border)', padding:'18px 20px',
+              cursor:'pointer', color:'var(--muted)', fontSize:13,
+              transition:'border-color 0.2s',
+            }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--gold)'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--navy-border)'}
+            >
+              <span style={{ fontSize:20 }}>📎</span>
+              <span>{lang === 'fr' ? 'Cliquez pour joindre une photo ou un PDF' : 'Click to attach a photo or PDF'}</span>
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                onChange={handleFileChange}
+                style={{ display:'none' }}
+              />
+            </label>
+          ) : (
+            <div style={{ position:'relative', border:'1px solid var(--navy-border)', padding:12 }}>
+              {uploadPreview === 'pdf' ? (
+                <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 4px' }}>
+                  <span style={{ fontSize:24 }}>📄</span>
+                  <span style={{ fontSize:13, color:'var(--white-dim)' }}>{uploadFile?.name || 'PDF attachment'}</span>
+                </div>
+              ) : (
+                <img
+                  src={uploadPreview}
+                  alt="receipt"
+                  style={{ width:'100%', maxHeight:200, objectFit:'cover' }}
+                />
+              )}
+              <button
+                onClick={removeAttachment}
+                style={{
+                  position:'absolute', top:8, right:8,
+                  background:'rgba(224,90,78,0.85)', border:'none',
+                  color:'white', width:24, height:24, borderRadius:'50%',
+                  cursor:'pointer', fontSize:14, lineHeight:1,
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                }}
+              >×</button>
+              {attachmentUrl && !uploadFile && (
+                
+                  href={attachmentUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ display:'block', marginTop:8, fontSize:11, color:'var(--gold)' }}
+                >
+                  {lang === 'fr' ? 'Voir le fichier actuel →' : 'View current file →'}
+                </a>
+              )}
+            </div>
+          )}
+        </div>
+
         {error && <p style={{ fontSize:12, color:'var(--red)', marginBottom:12 }}>! {error}</p>}
 
         <div style={{ display:'flex', gap:12, marginTop:8 }}>
-          <button className="btn btn-primary" style={{ flex:1 }} onClick={submit} disabled={loading}>
-            {loading ? t('modal_saving') : isEdit ? t('modal_update') : t('modal_save')}
+          <button className="btn btn-primary" style={{ flex:1 }} onClick={submit} disabled={loading || uploading}>
+            {uploading ? (lang === 'fr' ? 'Téléchargement...' : 'Uploading...') : loading ? t('modal_saving') : isEdit ? t('modal_update') : t('modal_save')}
           </button>
           <button className="btn btn-outline" onClick={onClose}>{t('modal_cancel')}</button>
         </div>
