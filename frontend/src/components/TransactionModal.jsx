@@ -14,22 +14,23 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
   const t = k => TR[lang][k]
   const isEdit = !!initial
 
-  const [type,             setType]            = useState(initial?.type || defaultType || 'income')
-  const [date,             setDate]            = useState(initial?.date || todayISO())
-  const [reference,        setReference]       = useState(initial?.reference || genRef())
-  const [amount,           setAmount]          = useState(initial?.amount || '')
-  const [currency,         setCurrency]        = useState(initial?.currency || 'XAF')
-  const [category,         setCategory]        = useState(initial?.category || (defaultType === 'expense' ? 'transport' : 'prime'))
-  const [description,      setDescription]     = useState(initial?.description || '')
-  const [note,             setNote]            = useState(initial?.note || '')
-  const [customerId,       setCustomerId]      = useState(initial?.customer_id || '')
-  const [workerName,       setWorkerName]      = useState(initial?.worker_name || '')
-  const [paymentMethod,    setPaymentMethod]   = useState(initial?.payment_method || 'cash')
-  const [isTvaApplicable,  setIsTvaApplicable] = useState(initial?.is_tva_applicable ?? true)
-  const [tvaAmount,        setTvaAmount]       = useState(initial?.tva_amount || 0)
-  const [customers,        setCustomers]       = useState([])
-  const [loading,          setLoading]         = useState(false)
-  const [error,            setError]           = useState('')
+  const [type,             setType]             = useState(initial?.type || defaultType || 'income')
+  const [date,             setDate]             = useState(initial?.date || todayISO())
+  const [reference,        setReference]        = useState(initial?.reference || genRef())
+  const [amount,           setAmount]           = useState(initial?.amount || '')
+  const [currency,         setCurrency]         = useState(initial?.currency || 'XAF')
+  const [category,         setCategory]         = useState(initial?.category || (defaultType === 'expense' ? 'transport' : 'prime'))
+  const [description,      setDescription]      = useState(initial?.description || '')
+  const [note,             setNote]             = useState(initial?.note || '')
+  const [customerId,       setCustomerId]       = useState(initial?.customer_id || '')
+  const [workerName,       setWorkerName]       = useState(initial?.worker_name || '')
+  const [paymentMethod,    setPaymentMethod]    = useState(initial?.payment_method || 'cash')
+  const [isTvaApplicable,  setIsTvaApplicable]  = useState(initial?.is_tva_applicable ?? true)
+  const [tvaAmount,        setTvaAmount]        = useState(initial?.tva_amount || 0)
+  const [tvaManual,        setTvaManual]        = useState(false)
+  const [customers,        setCustomers]        = useState([])
+  const [loading,          setLoading]          = useState(false)
+  const [error,            setError]            = useState('')
 
   useEffect(() => {
     customersAPI.list().then(r => setCustomers(r.data)).catch(() => {})
@@ -39,15 +40,26 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
     if (!isEdit) setCategory(type === 'income' ? 'prime' : 'transport')
   }, [type])
 
-  // Auto-calculate TVA when amount changes
+  // Auto-calculate TVA when amount or toggle changes
   useEffect(() => {
-    if (isTvaApplicable && amount && parseFloat(amount) > 0) {
-      const computed = parseFloat((parseFloat(amount) * TVA_RATE / (1 + TVA_RATE)).toFixed(2))
-      setTvaAmount(computed)
-    } else {
+    if (!tvaManual && isTvaApplicable && amount && parseFloat(amount) > 0) {
+      const calculated = parseFloat((parseFloat(amount) * TVA_RATE).toFixed(2))
+      setTvaAmount(calculated)
+    }
+    if (!isTvaApplicable) {
       setTvaAmount(0)
     }
-  }, [amount, isTvaApplicable])
+  }, [amount, isTvaApplicable, tvaManual])
+
+  const handleTvaChange = (val) => {
+    setTvaManual(true)
+    setTvaAmount(parseFloat(val) || 0)
+  }
+
+  const handleAmountChange = (val) => {
+    setAmount(val)
+    setTvaManual(false) // reset manual override when amount changes
+  }
 
   const submit = async () => {
     if (!amount || parseFloat(amount) <= 0) { setError(t('modal_err_amount')); return }
@@ -62,8 +74,8 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
       customer_id:       customerId ? parseInt(customerId) : null,
       worker_name:       type === 'expense' ? (workerName || user?.full_name) : null,
       payment_method:    paymentMethod,
-      is_tva_applicable: isTvaApplicable,
       tva_amount:        isTvaApplicable ? tvaAmount : 0,
+      is_tva_applicable: isTvaApplicable,
     }
     try {
       if (isEdit) await transactionsAPI.update(initial.id, payload)
@@ -186,25 +198,42 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
 
         <div className="form-group">
           <label>{t('modal_amount')}</label>
-          <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" min="0" step="0.01" />
+          <input
+            type="number"
+            value={amount}
+            onChange={e => handleAmountChange(e.target.value)}
+            placeholder="0"
+            min="0"
+            step="0.01"
+          />
         </div>
 
         {/* TVA section */}
-        <div style={{ background:'rgba(201,168,76,0.06)', border:'1px solid rgba(201,168,76,0.2)', padding:'16px 20px', marginBottom:20 }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: isTvaApplicable ? 12 : 0 }}>
-            <label style={{ margin:0, fontSize:12, letterSpacing:'1px', textTransform:'uppercase', color:'var(--gold)' }}>
-              {t('modal_tva_label')}
-            </label>
-            <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', margin:0 }}>
+        <div style={{
+          background:'var(--navy)', border:'1px solid var(--navy-border)',
+          borderLeft:'3px solid var(--gold)', padding:'16px 20px', marginBottom:20,
+        }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: isTvaApplicable ? 14 : 0 }}>
+            <div>
+              <div style={{ fontSize:12, fontWeight:500, marginBottom:2 }}>
+                {lang === 'fr' ? 'TVA applicable (19.25%)' : 'TVA applicable (19.25%)'}
+              </div>
+              {!isTvaApplicable && (
+                <div style={{ fontSize:11, color:'var(--muted)' }}>
+                  {lang === 'fr' ? 'Cette transaction est hors TVA' : 'This transaction is exempt from TVA'}
+                </div>
+              )}
+            </div>
+            <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer' }}>
               <span style={{ fontSize:12, color:'var(--muted)' }}>
-                {isTvaApplicable ? t('modal_tva_on') : t('modal_tva_off')}
+                {isTvaApplicable ? (lang === 'fr' ? 'Oui' : 'Yes') : (lang === 'fr' ? 'Non' : 'No')}
               </span>
               <div
-                onClick={() => setIsTvaApplicable(v => !v)}
+                onClick={() => { setIsTvaApplicable(!isTvaApplicable); setTvaManual(false) }}
                 style={{
-                  width:36, height:20, borderRadius:10, cursor:'pointer',
+                  width:36, height:20, borderRadius:10,
                   background: isTvaApplicable ? 'var(--gold)' : 'var(--navy-border)',
-                  position:'relative', transition:'background 0.2s',
+                  position:'relative', cursor:'pointer', transition:'background 0.2s',
                 }}
               >
                 <div style={{
@@ -216,24 +245,36 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
               </div>
             </label>
           </div>
+
           {isTvaApplicable && (
             <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-              <div className="form-group" style={{ flex:1, marginBottom:0 }}>
-                <label style={{ fontSize:11 }}>{t('modal_tva_amount')} (19.25%)</label>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:11, color:'var(--muted)', marginBottom:6 }}>
+                  {lang === 'fr' ? 'Montant TVA' : 'TVA amount'}
+                  {!tvaManual && amount && parseFloat(amount) > 0 && (
+                    <span style={{ color:'var(--gold)', marginLeft:8 }}>
+                      {lang === 'fr' ? '(calculé automatiquement)' : '(auto-calculated)'}
+                    </span>
+                  )}
+                </div>
                 <input
                   type="number"
                   value={tvaAmount}
-                  onChange={e => setTvaAmount(parseFloat(e.target.value) || 0)}
+                  onChange={e => handleTvaChange(e.target.value)}
+                  placeholder="0"
                   min="0"
                   step="0.01"
+                  style={{ width:'100%' }}
                 />
               </div>
-              <div style={{ fontSize:11, color:'var(--muted)', paddingTop:20 }}>
-                {t('modal_tva_excl')}:{' '}
-                <span style={{ color:'var(--white)', fontFamily:'var(--font-serif)', fontSize:14 }}>
-                  {amount ? (parseFloat(amount) - tvaAmount).toLocaleString() : '0'} {currency}
-                </span>
-              </div>
+              {amount && parseFloat(amount) > 0 && (
+                <div style={{ fontSize:11, color:'var(--muted)', textAlign:'center', minWidth:80 }}>
+                  <div style={{ color:'var(--gold)', fontFamily:'var(--font-serif)', fontSize:15 }}>
+                    {((tvaAmount / parseFloat(amount)) * 100).toFixed(1)}%
+                  </div>
+                  <div>{lang === 'fr' ? 'du montant' : 'of amount'}</div>
+                </div>
+              )}
             </div>
           )}
         </div>
