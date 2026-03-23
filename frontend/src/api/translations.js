@@ -255,6 +255,15 @@ export const TR = {
     pwd_err_length: 'Le nouveau mot de passe doit contenir au moins 6 caractères',
     pwd_err_match: 'Les mots de passe ne correspondent pas',
     pwd_err_save: 'Erreur lors de la mise à jour',
+    tva_collected:  'TVA collectée',
+    tva_deductible: 'TVA déductible',
+    tva_due:        'TVA nette due',
+    rep_pl_title:   'Compte de résultat',
+    modal_tva_label: 'TVA (19.25%)',
+    modal_tva_on:    'Applicable',
+    modal_tva_off:   'Non applicable',
+    modal_tva_amount: 'Montant TVA',
+    modal_tva_excl:   'HT',
   },
 
   en: {
@@ -513,5 +522,14 @@ export const TR = {
     pwd_err_length: 'New password must be at least 6 characters',
     pwd_err_match: 'Passwords do not match',
     pwd_err_save: 'Error updating password',
+    tva_collected:  'TVA collected',
+    tva_deductible: 'TVA deductible',
+    tva_due:        'Net TVA due',
+    rep_pl_title:   'Profit & Loss statement',
+    modal_tva_label: 'TVA (19.25%)',
+    modal_tva_on:    'Applicable',
+    modal_tva_off:   'Not applicable',
+    modal_tva_amount: 'TVA amount',
+    modal_tva_excl:   'Excl. TVA',
   }
 }
