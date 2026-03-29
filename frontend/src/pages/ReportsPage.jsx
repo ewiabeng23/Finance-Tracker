@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { reportsAPI, transactionsAPI } from '../api/endpoints'
-import { formatAmount, formatDate, EXPENSE_CATS, todayISO } from '../api/utils'
+import { formatAmount, formatAmountPDF, formatDate, EXPENSE_CATS, todayISO } from '../api/utils'
 import { useLang } from '../context/LanguageContext'
 import { TR } from '../api/translations'
 import { useToast } from '../hooks/useToast'
@@ -91,13 +91,13 @@ export default function ReportsPage() {
         startY: 46,
         head: [[lang === 'fr' ? 'Indicateur' : 'Indicator', lang === 'fr' ? 'Valeur' : 'Value']],
         body: [
-          [lang === 'fr' ? 'Entrees totales'    : 'Total income',    formatAmount(summary.total_income,   'XAF')],
-          [lang === 'fr' ? 'Sorties totales'    : 'Total outflows',  formatAmount(summary.total_expenses, 'XAF')],
-          [lang === 'fr' ? 'Solde net'          : 'Net balance',     formatAmount(summary.net_balance,    'XAF')],
-          [lang === 'fr' ? 'Depenses personnel' : 'Staff spending',  formatAmount(summary.staff_spending, 'XAF')],
-          [lang === 'fr' ? 'TVA collectee'      : 'TVA collected',   formatAmount(summary.tva_collected,  'XAF')],
-          [lang === 'fr' ? 'TVA deductible'     : 'TVA deductible',  formatAmount(summary.tva_deductible, 'XAF')],
-          [lang === 'fr' ? 'TVA due'            : 'TVA due',         formatAmount(summary.tva_due,        'XAF')],
+          [lang === 'fr' ? 'Entrees totales'    : 'Total income',    formatAmountPDF(summary.total_income,   'XAF')],
+          [lang === 'fr' ? 'Sorties totales'    : 'Total outflows',  formatAmountPDF(summary.total_expenses, 'XAF')],
+          [lang === 'fr' ? 'Solde net'          : 'Net balance',     formatAmountPDF(summary.net_balance,    'XAF')],
+          [lang === 'fr' ? 'Depenses personnel' : 'Staff spending',  formatAmountPDF(summary.staff_spending, 'XAF')],
+          [lang === 'fr' ? 'TVA collectee'      : 'TVA collected',   formatAmountPDF(summary.tva_collected,  'XAF')],
+          [lang === 'fr' ? 'TVA deductible'     : 'TVA deductible',  formatAmountPDF(summary.tva_deductible, 'XAF')],
+          [lang === 'fr' ? 'TVA due'            : 'TVA due',         formatAmountPDF(summary.tva_due,        'XAF')],
           [lang === 'fr' ? 'Nb. transactions'   : 'Transactions',    summary.transaction_count.toString()],
         ],
         styles: { fontSize: 10, cellPadding: 4 },
@@ -118,16 +118,16 @@ export default function ReportsPage() {
         head: [[lang === 'fr' ? 'Poste' : 'Item', lang === 'fr' ? 'Montant' : 'Amount']],
         body: [
           ...pl.income_lines.map(l => [l.category, formatAmount(l.total, 'XAF')]),
-          [lang === 'fr' ? 'TOTAL ENTREES' : 'TOTAL INCOME', formatAmount(pl.total_income, 'XAF')],
+          [lang === 'fr' ? 'TOTAL ENTREES' : 'TOTAL INCOME', formatAmountPDF(pl.total_income, 'XAF')],
           ['', ''],
           ...pl.expense_lines.map(l => [l.category, formatAmount(l.total, 'XAF')]),
-          [lang === 'fr' ? 'TOTAL SORTIES' : 'TOTAL EXPENSES', formatAmount(pl.total_expenses, 'XAF')],
+          [lang === 'fr' ? 'TOTAL SORTIES' : 'TOTAL EXPENSES', formatAmountPDF(pl.total_expenses, 'XAF')],
           ['', ''],
-          [lang === 'fr' ? 'BENEFICE NET' : 'NET PROFIT', formatAmount(pl.net_profit, 'XAF')],
+          [lang === 'fr' ? 'BENEFICE NET' : 'NET PROFIT', formatAmountPDF(pl.net_profit, 'XAF')],
           ['', ''],
-          [lang === 'fr' ? 'TVA collectee' : 'TVA collected',  formatAmount(pl.tva_collected,  'XAF')],
-          [lang === 'fr' ? 'TVA deductible': 'TVA deductible', formatAmount(pl.tva_deductible, 'XAF')],
-          [lang === 'fr' ? 'TVA DUE'       : 'TVA DUE',        formatAmount(pl.tva_due,        'XAF')],
+          [lang === 'fr' ? 'TVA collectee' : 'TVA collected',  formatAmountPDF(pl.tva_collected,  'XAF')],
+          [lang === 'fr' ? 'TVA deductible': 'TVA deductible', formatAmountPDF(pl.tva_deductible, 'XAF')],
+          [lang === 'fr' ? 'TVA DUE'       : 'TVA DUE',        formatAmountPDF(pl.tva_due,        'XAF')],
         ],
         styles: { fontSize: 10, cellPadding: 4 },
         headStyles: { fillColor: navy, textColor: gold, fontStyle: 'bold' },
@@ -320,12 +320,12 @@ export default function ReportsPage() {
         <div className="summary-grid" style={{ marginBottom:40 }}>
           <div className="summary-card">
             <div className="summary-label">{t('dash_card_in')}</div>
-            <div className="summary-value positive">{formatAmount(summary.total_income, 'XAF')}</div>
+            <div className="summary-value positive">{formatAmountPDF(summary.total_income, 'XAF')}</div>
             <div className="summary-sub">{summary.income_count} transactions</div>
           </div>
           <div className="summary-card">
             <div className="summary-label">{t('dash_card_out')}</div>
-            <div className="summary-value negative">{formatAmount(summary.total_expenses, 'XAF')}</div>
+            <div className="summary-value negative">{formatAmountPDF(summary.total_expenses, 'XAF')}</div>
             <div className="summary-sub">{summary.expense_count} transactions</div>
           </div>
           <div className="summary-card">
@@ -337,7 +337,7 @@ export default function ReportsPage() {
           </div>
           <div className="summary-card">
             <div className="summary-label">{t('dash_card_staff')}</div>
-            <div className="summary-value negative">{formatAmount(summary.staff_spending, 'XAF')}</div>
+            <div className="summary-value negative">{formatAmountPDF(summary.staff_spending, 'XAF')}</div>
             <div className="summary-sub">{summary.transaction_count} {lang === 'fr' ? 'opérations' : 'operations'}</div>
           </div>
         </div>
@@ -350,12 +350,12 @@ export default function ReportsPage() {
           <div className="summary-grid" style={{ marginBottom:40 }}>
             <div className="summary-card">
               <div className="summary-label">{lang === 'fr' ? 'TVA collectée' : 'TVA collected'}</div>
-              <div className="summary-value positive">{formatAmount(summary.tva_collected, 'XAF')}</div>
+              <div className="summary-value positive">{formatAmountPDF(summary.tva_collected, 'XAF')}</div>
               <div className="summary-sub">{lang === 'fr' ? 'Sur les entrées' : 'On income'}</div>
             </div>
             <div className="summary-card">
               <div className="summary-label">{lang === 'fr' ? 'TVA déductible' : 'TVA deductible'}</div>
-              <div className="summary-value negative">{formatAmount(summary.tva_deductible, 'XAF')}</div>
+              <div className="summary-value negative">{formatAmountPDF(summary.tva_deductible, 'XAF')}</div>
               <div className="summary-sub">{lang === 'fr' ? 'Sur les sorties' : 'On expenses'}</div>
             </div>
             <div className="summary-card">
@@ -387,7 +387,7 @@ export default function ReportsPage() {
               ))}
               <div style={{ display:'flex', justifyContent:'space-between', padding:'12px 0 0', marginTop:4 }}>
                 <span style={{ fontSize:12, letterSpacing:'1px', textTransform:'uppercase', color:'var(--muted)' }}>{lang === 'fr' ? 'Total entrées' : 'Total income'}</span>
-                <span style={{ fontFamily:'var(--font-serif)', fontSize:18, color:'var(--green)' }}>+{formatAmount(pl.total_income, 'XAF')}</span>
+                <span style={{ fontFamily:'var(--font-serif)', fontSize:18, color:'var(--green)' }}>+{formatAmountPDF(pl.total_income, 'XAF')}</span>
               </div>
             </div>
 
@@ -404,7 +404,7 @@ export default function ReportsPage() {
               ))}
               <div style={{ display:'flex', justifyContent:'space-between', padding:'12px 0 0', marginTop:4 }}>
                 <span style={{ fontSize:12, letterSpacing:'1px', textTransform:'uppercase', color:'var(--muted)' }}>{lang === 'fr' ? 'Total sorties' : 'Total expenses'}</span>
-                <span style={{ fontFamily:'var(--font-serif)', fontSize:18, color:'var(--red)' }}>-{formatAmount(pl.total_expenses, 'XAF')}</span>
+                <span style={{ fontFamily:'var(--font-serif)', fontSize:18, color:'var(--red)' }}>-{formatAmountPDF(pl.total_expenses, 'XAF')}</span>
               </div>
             </div>
           </div>
@@ -422,9 +422,9 @@ export default function ReportsPage() {
             </div>
             <div className="summary-card" style={{ borderLeft:'3px solid var(--gold)' }}>
               <div className="summary-label">{lang === 'fr' ? 'TVA due à l\'État' : 'TVA payable'}</div>
-              <div className="summary-value gold">{formatAmount(pl.tva_due, 'XAF')}</div>
+              <div className="summary-value gold">{formatAmountPDF(pl.tva_due, 'XAF')}</div>
               <div className="summary-sub">
-                {lang === 'fr' ? `Collectée ${formatAmount(pl.tva_collected,'XAF')} − Déductible ${formatAmount(pl.tva_deductible,'XAF')}` : `Collected ${formatAmount(pl.tva_collected,'XAF')} − Deductible ${formatAmount(pl.tva_deductible,'XAF')}`}
+                {lang === 'fr' ? `Collectée ${formatAmountPDF(pl.tva_collected,'XAF')} − Déductible ${formatAmountPDF(pl.tva_deductible,'XAF')}` : `Collected ${formatAmountPDF(pl.tva_collected,'XAF')} − Deductible ${formatAmountPDF(pl.tva_deductible,'XAF')}`}
               </div>
             </div>
           </div>

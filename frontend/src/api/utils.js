@@ -57,3 +57,11 @@ export function getCatLabel(category, type, lang = 'fr') {
 export function getCatBadge(category, type) {
   return getCatDef(category, type).badge
 }
+
+export function formatAmountPDF(amount, currency = 'XAF') {
+  const n = parseFloat(amount) || 0
+  const formatted = n.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  if (currency === 'XAF') return formatted + ' XAF'
+  const sym = { EUR: 'EUR ', GBP: 'GBP ', USD: 'USD ' }
+  return (sym[currency] || '') + formatted
+}

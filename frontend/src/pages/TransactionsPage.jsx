@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { transactionsAPI } from '../api/endpoints'
-import { formatAmount, formatDate, getCatBadge, getCatLabel, EXPENSE_CATS, INCOME_CATS } from '../api/utils'
+import { formatAmount, formatAmountPDF, formatDate, getCatBadge, getCatLabel, EXPENSE_CATS, INCOME_CATS } from '../api/utils'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LanguageContext'
 import { TR } from '../api/translations'
@@ -124,7 +124,7 @@ export default function TransactionsPage() {
     doc.text(tx.description || '—', 20, 124)
     doc.text(getCatLabel(tx.category, tx.type, lang), 110, 124)
     doc.setFont('helvetica', 'bold')
-    doc.text(formatAmount(tx.amount, tx.currency), 165, 124)
+    doc.text(formatAmountPDF(tx.amount, tx.currency), 165, 124)
 
     doc.setFillColor(...navy)
     doc.rect(120, 140, 76, 18, 'F')
@@ -132,7 +132,7 @@ export default function TransactionsPage() {
     doc.setFontSize(11)
     doc.setFont('helvetica', 'bold')
     doc.text('TOTAL', 130, 151)
-    doc.text(formatAmount(tx.amount, tx.currency), 165, 151)
+    doc.text(formatAmountPDF(tx.amount, tx.currency), 165, 151)
 
     if (tx.note) {
       doc.setTextColor(120, 120, 120)
@@ -212,7 +212,7 @@ export default function TransactionsPage() {
     doc.text(lang === 'fr' ? 'MONTANT TOTAL' : 'TOTAL AMOUNT', 20, 134)
     doc.setTextColor(...red)
     doc.setFontSize(16)
-    doc.text(formatAmount(tx.amount, tx.currency), 130, 134)
+    doc.text(formatAmountPDF(tx.amount, tx.currency), 130, 134)
 
     if (tx.note) {
       doc.setTextColor(120, 120, 120)
