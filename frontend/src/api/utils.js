@@ -60,7 +60,9 @@ export function getCatBadge(category, type) {
 
 export function formatAmountPDF(amount, currency = 'XAF') {
   const n = parseFloat(amount) || 0
-  const formatted = n.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  const parts = n.toFixed(2).split('.')
+  const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  const formatted = intPart
   if (currency === 'XAF') return formatted + ' XAF'
   const sym = { EUR: 'EUR ', GBP: 'GBP ', USD: 'USD ' }
   return (sym[currency] || '') + formatted
