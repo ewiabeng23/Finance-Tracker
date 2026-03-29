@@ -49,7 +49,6 @@ export default function TransactionsPage() {
     load()
   }
 
-  // Running balance calculation
   const txsWithBalance = () => {
     let balance = 0
     return [...transactions].reverse().map(tx => {
@@ -79,7 +78,7 @@ export default function TransactionsPage() {
     doc.text("Diko's Assurances SARL", 42, 18)
     doc.setFontSize(9)
     doc.setFont('helvetica', 'normal')
-    doc.text(lang === 'fr' ? 'Courtier agréé — Chanas Assurances S.A.' : 'Accredited broker — Chanas Assurances S.A.', 42, 26)
+    doc.text(lang === 'fr' ? 'Courtier agree — Chanas Assurances S.A.' : 'Accredited broker — Chanas Assurances S.A.', 42, 26)
     doc.text('Douala, Cameroun', 42, 33)
     doc.setTextColor(...gold)
     doc.setFontSize(22)
@@ -88,24 +87,24 @@ export default function TransactionsPage() {
     doc.setFontSize(10)
     doc.setFont('helvetica', 'normal')
     doc.setTextColor(...white)
-    doc.text(`N° ${tx.reference}`, 150, 30)
+    doc.text('N ' + tx.reference, 150, 30)
 
     doc.setFillColor(240, 237, 228)
     doc.rect(14, 55, 182, 40, 'F')
     doc.setTextColor(...navy)
     doc.setFontSize(9)
     doc.setFont('helvetica', 'bold')
-    doc.text(lang === 'fr' ? 'FACTURÉ À' : 'BILLED TO', 20, 65)
+    doc.text(lang === 'fr' ? 'FACTURE A' : 'BILLED TO', 20, 65)
     doc.setFont('helvetica', 'normal')
     doc.text(tx.customer?.full_name || '—', 20, 73)
     if (tx.customer?.phone) doc.text(tx.customer.phone, 20, 80)
     if (tx.customer?.email) doc.text(tx.customer.email, 20, 87)
     doc.setFont('helvetica', 'bold')
-    doc.text(lang === 'fr' ? 'DATE' : 'DATE', 130, 65)
+    doc.text('DATE', 130, 65)
     doc.setFont('helvetica', 'normal')
     doc.text(formatDate(tx.date, lang), 130, 73)
     doc.setFont('helvetica', 'bold')
-    doc.text(lang === 'fr' ? 'RÉFÉRENCE' : 'REFERENCE', 130, 80)
+    doc.text('REFERENCE', 130, 80)
     doc.setFont('helvetica', 'normal')
     doc.text(tx.reference, 130, 88)
 
@@ -114,9 +113,9 @@ export default function TransactionsPage() {
     doc.setTextColor(...gold)
     doc.setFontSize(9)
     doc.setFont('helvetica', 'bold')
-    doc.text(lang === 'fr' ? 'DESCRIPTION' : 'DESCRIPTION', 20, 112)
-    doc.text(lang === 'fr' ? 'CATÉGORIE' : 'CATEGORY', 110, 112)
-    doc.text(lang === 'fr' ? 'MONTANT' : 'AMOUNT', 165, 112)
+    doc.text('DESCRIPTION', 20, 112)
+    doc.text('CATEGORIE', 110, 112)
+    doc.text('MONTANT', 165, 112)
 
     doc.setFillColor(252, 250, 245)
     doc.rect(14, 115, 182, 14, 'F')
@@ -132,7 +131,7 @@ export default function TransactionsPage() {
     doc.setTextColor(...gold)
     doc.setFontSize(11)
     doc.setFont('helvetica', 'bold')
-    doc.text(lang === 'fr' ? 'TOTAL' : 'TOTAL', 130, 151)
+    doc.text('TOTAL', 130, 151)
     doc.text(formatAmount(tx.amount, tx.currency), 165, 151)
 
     if (tx.note) {
@@ -149,10 +148,10 @@ export default function TransactionsPage() {
     doc.text("Diko's Assurances SARL", 14, 282)
     doc.setTextColor(...white)
     doc.text(lang === 'fr' ? 'Merci pour votre confiance.' : 'Thank you for your business.', 14, 289)
-    doc.text(`${lang === 'fr' ? 'Généré le' : 'Generated on'} ${new Date().toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB')}`, 130, 289)
+    doc.text((lang === 'fr' ? 'Genere le ' : 'Generated on ') + new Date().toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB'), 130, 289)
 
-    doc.save(`facture-${tx.reference}.pdf`)
-    show(lang === 'fr' ? 'Facture générée ✓' : 'Invoice generated ✓')
+    doc.save('facture-' + tx.reference + '.pdf')
+    show(lang === 'fr' ? 'Facture generee' : 'Invoice generated')
   }
 
   const generateReceipt = async (tx) => {
@@ -177,15 +176,15 @@ export default function TransactionsPage() {
     doc.text("Diko's Assurances SARL", 42, 18)
     doc.setFontSize(9)
     doc.setFont('helvetica', 'normal')
-    doc.text(lang === 'fr' ? 'Courtier agréé — Chanas Assurances S.A.' : 'Accredited broker — Chanas Assurances S.A.', 42, 26)
+    doc.text(lang === 'fr' ? 'Courtier agree — Chanas Assurances S.A.' : 'Accredited broker — Chanas Assurances S.A.', 42, 26)
     doc.setTextColor(...red)
     doc.setFontSize(18)
     doc.setFont('helvetica', 'bold')
-    doc.text(lang === 'fr' ? 'REÇU DE DÉPENSE' : 'EXPENSE RECEIPT', 110, 20)
+    doc.text(lang === 'fr' ? 'RECU DE DEPENSE' : 'EXPENSE RECEIPT', 110, 20)
     doc.setFontSize(9)
     doc.setFont('helvetica', 'normal')
     doc.setTextColor(...white)
-    doc.text(`N° ${tx.reference}`, 140, 30)
+    doc.text('N ' + tx.reference, 140, 30)
 
     doc.setFillColor(240, 237, 228)
     doc.rect(14, 55, 182, 55, 'F')
@@ -193,10 +192,10 @@ export default function TransactionsPage() {
     doc.setFontSize(10)
     const rows = [
       [lang === 'fr' ? 'Collaborateur' : 'Staff member', tx.worker_name || '—'],
-      [lang === 'fr' ? 'Date' : 'Date', formatDate(tx.date, lang)],
-      [lang === 'fr' ? 'Catégorie' : 'Category', getCatLabel(tx.category, tx.type, lang)],
-      [lang === 'fr' ? 'Description' : 'Description', tx.description || '—'],
-      [lang === 'fr' ? 'Référence' : 'Reference', tx.reference],
+      ['Date', formatDate(tx.date, lang)],
+      [lang === 'fr' ? 'Categorie' : 'Category', getCatLabel(tx.category, tx.type, lang)],
+      ['Description', tx.description || '—'],
+      ['Reference', tx.reference],
     ]
     rows.forEach(([label, value], i) => {
       doc.setFont('helvetica', 'bold')
@@ -228,10 +227,10 @@ export default function TransactionsPage() {
     doc.setFontSize(9)
     doc.text("Diko's Assurances SARL", 14, 282)
     doc.setTextColor(...white)
-    doc.text(`${lang === 'fr' ? 'Généré le' : 'Generated on'} ${new Date().toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB')}`, 130, 289)
+    doc.text((lang === 'fr' ? 'Genere le ' : 'Generated on ') + new Date().toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB'), 130, 289)
 
-    doc.save(`recu-${tx.reference}.pdf`)
-    show(lang === 'fr' ? 'Reçu généré ✓' : 'Receipt generated ✓')
+    doc.save('recu-' + tx.reference + '.pdf')
+    show(lang === 'fr' ? 'Recu genere' : 'Receipt generated')
   }
 
   const allCats = { ...INCOME_CATS, ...EXPENSE_CATS }
@@ -250,15 +249,14 @@ export default function TransactionsPage() {
         </div>
       </div>
 
-      {/* Filters */}
       <div className="filter-bar" style={{ marginBottom:12 }}>
         <div className="filter-tabs">
           {[['all', t('tx_filter_all')], ['income', t('tx_filter_in')], ['expense', t('tx_filter_out')]].map(([v,l]) => (
-            <button key={v} className={`filter-tab ${filter===v?'active':''}`} onClick={() => setFilter(v)}>{l}</button>
+            <button key={v} className={'filter-tab ' + (filter===v ? 'active' : '')} onClick={() => setFilter(v)}>{l}</button>
           ))}
         </div>
         <div className="search-wrap">
-          <span className="search-icon">⌕</span>
+          <span className="search-icon">&#8981;</span>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t('tx_search')} style={{ width:200 }} />
         </div>
         <select
@@ -272,7 +270,6 @@ export default function TransactionsPage() {
         </select>
       </div>
 
-      {/* Date range filter */}
       <div style={{ display:'flex', gap:16, marginBottom:24, flexWrap:'wrap', alignItems:'flex-end' }}>
         <div className="form-group" style={{ marginBottom:0 }}>
           <label style={{ fontSize:10, letterSpacing:'2px', textTransform:'uppercase', color:'var(--gold)' }}>
@@ -288,7 +285,7 @@ export default function TransactionsPage() {
         </div>
         {(dateFrom || dateTo) && (
           <button className="btn btn-outline btn-sm" onClick={() => { setDateFrom(''); setDateTo('') }}>
-            ✕ {lang === 'fr' ? 'Réinitialiser' : 'Reset'}
+            x {lang === 'fr' ? 'Reinitialiser' : 'Reset'}
           </button>
         )}
         <div style={{ marginLeft:'auto', fontSize:12, color:'var(--muted)' }}>
@@ -325,7 +322,18 @@ export default function TransactionsPage() {
             ) : txsBalanced.map(tx => (
               <tr key={tx.id}>
                 <td className="td-muted">{formatDate(tx.date, lang)}</td>
-                <td className="td-serif">{tx.reference}</td>
+                <td>
+                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                    <span className="td-serif">{tx.reference}</span>
+                    {tx.attachment_url && (
+                      <button
+                        onClick={() => window.open(tx.attachment_url)}
+                        title={lang === 'fr' ? 'Voir la piece jointe' : 'View attachment'}
+                        style={{ background:'none', border:'none', cursor:'pointer', padding:0, fontSize:13, color:'var(--gold)', lineHeight:1 }}
+                      >&#128206;</button>
+                    )}
+                  </div>
+                </td>
                 <td>
                   {tx.type === 'income'
                     ? <span style={{ color:'var(--white-dim)' }}>{tx.customer?.full_name || '—'}</span>
@@ -333,15 +341,15 @@ export default function TransactionsPage() {
                   }
                 </td>
                 <td style={{ color:'var(--white-dim)', maxWidth:180 }}>{tx.description || '—'}</td>
-                <td><span className={`badge ${getCatBadge(tx.category, tx.type)}`}>{getCatLabel(tx.category, tx.type, lang)}</span></td>
+                <td><span className={'badge ' + getCatBadge(tx.category, tx.type)}>{getCatLabel(tx.category, tx.type, lang)}</span></td>
                 <td className="td-muted">{tx.created_by_user?.full_name || '—'}</td>
                 <td>
-                  <span className={`badge ${tx.type === 'income' ? 'badge-income' : 'badge-expense'}`}>
+                  <span className={'badge ' + (tx.type === 'income' ? 'badge-income' : 'badge-expense')}>
                     {tx.type === 'income' ? t('tx_badge_in') : t('tx_badge_out')}
                   </span>
                 </td>
                 <td className="right">
-                  <span className={`td-amount ${tx.type}`}>
+                  <span className={'td-amount ' + tx.type}>
                     {tx.type === 'expense' ? '−' : '+'}{formatAmount(tx.amount, tx.currency)}
                   </span>
                 </td>
@@ -357,12 +365,12 @@ export default function TransactionsPage() {
                   <div style={{ display:'flex', gap:5, justifyContent:'flex-end' }}>
                     {tx.type === 'income' && (
                       <button className="btn btn-outline btn-sm" onClick={() => generateInvoice(tx)}>
-                        {lang === 'fr' ? '📄 Facture' : '📄 Invoice'}
+                        {lang === 'fr' ? 'Facture' : 'Invoice'}
                       </button>
                     )}
                     {tx.type === 'expense' && (
                       <button className="btn btn-outline btn-sm" onClick={() => generateReceipt(tx)}>
-                        {lang === 'fr' ? '🧾 Reçu' : '🧾 Receipt'}
+                        {lang === 'fr' ? 'Recu' : 'Receipt'}
                       </button>
                     )}
                     {isManager && (
