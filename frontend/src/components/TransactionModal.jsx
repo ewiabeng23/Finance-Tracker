@@ -12,18 +12,18 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 async function uploadReceipt(file) {
   const ext      = file.name.split('.').pop()
-  const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/receipts/${filename}`, {
+  const filename = Date.now() + '-' + Math.random().toString(36).slice(2) + '.' + ext
+  const res = await fetch(SUPABASE_URL + '/storage/v1/object/receipts/' + filename, {
     method:  'POST',
     headers: {
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
       'Content-Type':  file.type,
       'x-upsert':      'true',
     },
     body: file,
   })
   if (!res.ok) throw new Error('Upload failed')
-  return `${SUPABASE_URL}/storage/v1/object/public/receipts/${filename}`
+  return SUPABASE_URL + '/storage/v1/object/public/receipts/' + filename
 }
 
 export default function TransactionModal({ onClose, onSaved, initial = null, defaultType = 'income' }) {
@@ -96,6 +96,10 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
     setAttachmentUrl('')
   }
 
+  const openAttachment = () => {
+    if (attachmentUrl) window.open(attachmentUrl)
+  }
+
   const submit = async () => {
     if (!amount || parseFloat(amount) <= 0) { setError(t('modal_err_amount')); return }
     if (!description.trim()) { setError(t('modal_err_desc')); return }
@@ -108,7 +112,7 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
         finalUrl = await uploadReceipt(uploadFile)
         setAttachmentUrl(finalUrl)
       } catch (e) {
-        setError(lang === 'fr' ? 'Erreur lors du chargement du fichier' : 'File upload failed')
+        setError(lang === 'fr' ? 'Erreur chargement fichier' : 'File upload failed')
         setLoading(false); setUploading(false); return
       }
       setUploading(false)
@@ -384,14 +388,12 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
                 }}
               >x</button>
               {attachmentUrl && !uploadFile && (
-                
-                  href={attachmentUrl}
-                  target={'_blank'}
-                  rel={'noreferrer'}
-                  style={{ display:'block', marginTop:8, fontSize:11, color:'var(--gold)' }}
+                <button
+                  onClick={openAttachment}
+                  style={{ display:'block', marginTop:8, fontSize:11, color:'var(--gold)', background:'none', border:'none', cursor:'pointer', padding:0 }}
                 >
                   {lang === 'fr' ? 'Voir le fichier actuel' : 'View current file'}
-                </a>
+                </button>
               )}
             </div>
           )}
