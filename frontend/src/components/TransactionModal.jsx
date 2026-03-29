@@ -103,6 +103,13 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
   const submit = async () => {
     if (!amount || parseFloat(amount) <= 0) { setError(t('modal_err_amount')); return }
     if (!description.trim()) { setError(t('modal_err_desc')); return }
+
+    // Block workers from submitting past dates on new transactions
+    if (!isManager && !isEdit && date < todayISO()) {
+      setError(lang === 'fr' ? 'Les collaborateurs ne peuvent pas saisir une date passee' : 'Staff cannot record transactions with a past date')
+      return
+    }
+
     setLoading(true); setError('')
 
     let finalUrl = attachmentUrl
@@ -190,8 +197,21 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
 
         <div className="form-row">
           <div className="form-group">
-            <label>{t('modal_date')}</label>
-            <input type="date" value={date} onChange={e => setDate(e.target.value)} />
+            <label>
+              {t('modal_date')}
+              {!isManager && !isEdit && (
+                <span style={{ fontSize:10, color:'var(--muted)', marginLeft:8 }}>
+                  {lang === 'fr' ? '(aujourd\'hui uniquement)' : '(today only)'}
+                </span>
+              )}
+            </label>
+            <input
+              type="date"
+              value={date}
+              min={!isManager && !isEdit ? todayISO() : undefined}
+              max={!isManager && !isEdit ? todayISO() : undefined}
+              onChange={e => setDate(e.target.value)}
+            />
           </div>
           <div className="form-group">
             <label>{t('modal_ref')}</label>
