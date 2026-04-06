@@ -1,23 +1,21 @@
 // ── Category config ────────────────────────────────
 export const EXPENSE_CATS = {
   transport:  { label: 'Transport',             labelEn: 'Transportation',      badge: 'badge-transport',  color: '#6495ED' },
-  electric:   { label: 'Électricité',           labelEn: 'Electric bill',       badge: 'badge-electric',   color: '#E8C55A' },
+  electric:   { label: 'Electricite',           labelEn: 'Electric bill',       badge: 'badge-electric',   color: '#E8C55A' },
   wifi:       { label: 'Internet / Wifi',       labelEn: 'Internet / Wifi',     badge: 'badge-wifi',       color: '#BA8FFF' },
   food:       { label: 'Alimentation / Repas',  labelEn: 'Food / Meals',        badge: 'badge-food',       color: '#FFB347' },
-  commission: { label: 'Commission versée',     labelEn: 'Commission paid',     badge: 'badge-commission', color: '#4CAF82' },
-  sinistre:   { label: 'Règlement sinistre',    labelEn: 'Claim settlement',    badge: 'badge-sinistre',   color: '#E05A4E' },
+  commission: { label: 'Commission versee',     labelEn: 'Commission paid',     badge: 'badge-commission', color: '#4CAF82' },
+  sinistre:   { label: 'Reglement sinistre',    labelEn: 'Claim settlement',    badge: 'badge-sinistre',   color: '#E05A4E' },
   salary:     { label: 'Salaire / Prime',       labelEn: 'Salary / Bonus',      badge: 'badge-salary',     color: '#5DC5A0' },
   office:     { label: 'Fournitures bureau',    labelEn: 'Office supplies',     badge: 'badge-office',     color: '#C9A84C' },
-  frais:      { label: 'Frais généraux',        labelEn: 'General expenses',    badge: 'badge-frais',      color: '#9BA8B5' },
-  autre:      { label: 'Autre dépense',         labelEn: 'Other expense',       badge: 'badge-autre',      color: '#7A7A7A' },
+  frais:      { label: 'Frais generaux',        labelEn: 'General expenses',    badge: 'badge-frais',      color: '#9BA8B5' },
+  autre:      { label: 'Autre depense',         labelEn: 'Other expense',       badge: 'badge-autre',      color: '#7A7A7A' },
 }
-
 export const INCOME_CATS = {
   prime:      { label: "Prime d'assurance",     labelEn: 'Insurance premium',   badge: 'badge-prime' },
-  commission: { label: 'Commission reçue',      labelEn: 'Commission received', badge: 'badge-commission' },
-  autre:      { label: 'Autre entrée',          labelEn: 'Other income',        badge: 'badge-autre' },
+  commission: { label: 'Commission recue',      labelEn: 'Commission received', badge: 'badge-commission' },
+  autre:      { label: 'Autre entree',          labelEn: 'Other income',        badge: 'badge-autre' },
 }
-
 export const CURRENCIES = ['XAF', 'EUR', 'GBP', 'USD']
 
 // ── Formatting ────────────────────────────────────
@@ -26,6 +24,14 @@ export function formatAmount(amount, currency = 'XAF') {
   if (currency === 'XAF') return n.toLocaleString('fr-FR') + ' XAF'
   const sym = { EUR: '€', GBP: '£', USD: '$' }
   return (sym[currency] || '') + n.toLocaleString('fr-FR')
+}
+
+export function formatAmountPDF(amount, currency = 'XAF') {
+  const n = parseFloat(amount) || 0
+  const intPart = Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  if (currency === 'XAF') return intPart + ' XAF'
+  const sym = { EUR: 'EUR ', GBP: 'GBP ', USD: 'USD ' }
+  return (sym[currency] || '') + intPart
 }
 
 export function formatDate(d, lang = 'fr') {
@@ -56,14 +62,4 @@ export function getCatLabel(category, type, lang = 'fr') {
 
 export function getCatBadge(category, type) {
   return getCatDef(category, type).badge
-}
-
-export function formatAmountPDF(amount, currency = 'XAF') {
-  const n = parseFloat(amount) || 0
-  const parts = n.toFixed(2).split('.')
-  const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.')
-  const formatted = intPart
-  if (currency === 'XAF') return formatted + ' XAF'
-  const sym = { EUR: 'EUR ', GBP: 'GBP ', USD: 'USD ' }
-  return (sym[currency] || '') + formatted
 }
