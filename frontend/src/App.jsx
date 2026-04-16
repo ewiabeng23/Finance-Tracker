@@ -50,7 +50,7 @@ function AppLayout() {
         display:'flex', justifyContent:'space-between', alignItems:'center',
         fontSize:11, color:'var(--muted)',
       }}>
-        <span>© 2025 Diko's Assurances SARL</span>
+        <span>© 2025 Finance Tracker</span>
         <span style={{ fontFamily:'var(--font-serif)', fontStyle:'italic', color:'var(--gold-dim)', fontSize:13 }}>
           Your protection, our commitment.
         </span>
