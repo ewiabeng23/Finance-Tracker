@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { transactionsAPI, customersAPI } from '../api/endpoints'
-import { EXPENSE_CATS, INCOME_CATS, CURRENCIES, todayISO, genRef } from '../api/utils'
+import { EXPENSE_CATS, INCOME_CATS, CURRENCIES, todayISO } from '../api/utils'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LanguageContext'
 import { TR } from '../api/translations'
@@ -34,7 +34,6 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
 
   const [type,             setType]             = useState(initial?.type || defaultType || 'income')
   const [date,             setDate]             = useState(initial?.date || todayISO())
-  const [reference,        setReference]        = useState(initial?.reference || genRef())
   const [amount,           setAmount]           = useState(initial?.amount || '')
   const [currency,         setCurrency]         = useState(initial?.currency || 'XAF')
   const [category,         setCategory]         = useState(initial?.category || (defaultType === 'expense' ? 'transport' : 'prime'))
@@ -125,8 +124,9 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
       setUploading(false)
     }
 
+    // The reference is assigned by the server, so it is not sent from here.
     const payload = {
-      reference, date, type, category,
+      date, type, category,
       amount:            parseFloat(amount),
       currency,
       description,
@@ -215,7 +215,12 @@ export default function TransactionModal({ onClose, onSaved, initial = null, def
           </div>
           <div className="form-group">
             <label>{t('modal_ref')}</label>
-            <input value={reference} onChange={e => setReference(e.target.value)} />
+            <input
+              value={isEdit ? (initial?.reference || '') : ''}
+              readOnly
+              disabled
+              placeholder={lang === 'fr' ? 'Attribué automatiquement' : 'Assigned automatically'}
+            />
           </div>
         </div>
 
