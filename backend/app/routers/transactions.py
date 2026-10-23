@@ -6,9 +6,31 @@ from app.core.database import get_db
 from app.core.security import get_current_user, require_manager
 from app.models.user import User
 from app.models.transaction import Transaction
+from app.models.reference_counter import ReferenceCounter
 from app.schemas.schemas import TransactionCreate, TransactionUpdate, TransactionOut
 
 router = APIRouter()
+
+
+def next_reference(db: Session, tx_type, tx_date: date) -> str:
+    """Return the next sequential reference, e.g. INV-2026-001 or EXP-2026-001.
+    The counter row is locked so two simultaneous saves cannot get the same number.
+    The number is only kept if the transaction itself is saved (same commit)."""
+    prefix = "INV" if str(getattr(tx_type, "value", tx_type)) == "income" else "EXP"
+    year = tx_date.year
+    counter = (
+        db.query(ReferenceCounter)
+        .filter(ReferenceCounter.prefix == prefix, ReferenceCounter.year == year)
+        .with_for_update()
+        .first()
+    )
+    if not counter:
+        counter = ReferenceCounter(prefix=prefix, year=year, last_number=0)
+        db.add(counter)
+        db.flush()
+    counter.last_number += 1
+    return f"{prefix}-{year}-{counter.last_number:03d}"
+
 
 @router.get("/", response_model=List[TransactionOut])
 def list_transactions(
@@ -46,9 +68,10 @@ def create_transaction(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if db.query(Transaction).filter(Transaction.reference == payload.reference).first():
-        raise HTTPException(status_code=400, detail="Reference number already exists")
-    tx = Transaction(**payload.model_dump(), created_by=current_user.id)
+    # The server always assigns the reference; any value sent by the client is ignored.
+    data = payload.model_dump(exclude={"reference"})
+    reference = next_reference(db, payload.type, payload.date)
+    tx = Transaction(**data, reference=reference, created_by=current_user.id)
     db.add(tx)
     db.commit()
     db.refresh(tx)
@@ -76,12 +99,11 @@ def update_transaction(
 @router.delete("/{tx_id}")
 def delete_transaction(
     tx_id: int,
-    db: Session = Depends(get_db),
-    _: User = Depends(require_manager),   # ← managers only
+    _: User = Depends(require_manager),
 ):
-    tx = db.query(Transaction).filter(Transaction.id == tx_id).first()
-    if not tx:
-        raise HTTPException(status_code=404, detail="Transaction not found")
-    db.delete(tx)
-    db.commit()
-    return {"message": "Transaction deleted"}
+    # Deleting would leave gaps in the sequential numbering, so it is disabled.
+    # Corrections are made by editing the transaction instead.
+    raise HTTPException(
+        status_code=405,
+        detail="Transactions cannot be deleted. Edit the transaction to correct it.",
+    )

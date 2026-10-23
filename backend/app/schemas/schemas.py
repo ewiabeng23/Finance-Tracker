@@ -90,7 +90,7 @@ class CustomerOut(BaseModel):
 
 # ── Transaction ────────────────────────────────────
 class TransactionCreate(BaseModel):
-    reference:         str
+    reference:         Optional[str] = None
     date:              date
     type:              TransactionType
     category:          str
