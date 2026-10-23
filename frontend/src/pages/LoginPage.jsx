@@ -12,6 +12,7 @@ export default function LoginPage() {
 
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [showPwd,  setShowPwd]  = useState(false)
   const [error,    setError]    = useState('')
   const [loading,  setLoading]  = useState(false)
 
@@ -87,13 +88,28 @@ export default function LoginPage() {
             </div>
             <div className="form-group">
               <label>{t('login_password')}</label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder={t('login_placeholder_pass')}
-                autoComplete="current-password"
-              />
+              <div style={{ display:'flex', gap:8 }}>
+                <input
+                  type={showPwd ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder={t('login_placeholder_pass')}
+                  autoComplete="current-password"
+                  style={{ flex:1 }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  onClick={() => setShowPwd(v => !v)}
+                  aria-label={showPwd
+                    ? (lang === 'fr' ? 'Masquer le mot de passe' : 'Hide password')
+                    : (lang === 'fr' ? 'Afficher le mot de passe' : 'Show password')}
+                >
+                  {showPwd
+                    ? (lang === 'fr' ? 'Masquer' : 'Hide')
+                    : (lang === 'fr' ? 'Afficher' : 'Show')}
+                </button>
+              </div>
             </div>
 
             {error && (
