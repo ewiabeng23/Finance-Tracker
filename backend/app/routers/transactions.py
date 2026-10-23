@@ -15,7 +15,7 @@ router = APIRouter()
 def next_reference(db: Session, tx_type, tx_date: date) -> str:
     """Return the next sequential reference, e.g. INV-2026-001 or EXP-2026-001.
     The counter row is locked so two simultaneous saves cannot get the same number.
-    The number is only kept if the transaction itself is saved (same commit)."""
+    If a number is somehow already used, keep counting until a free one is found."""
     prefix = "INV" if str(getattr(tx_type, "value", tx_type)) == "income" else "EXP"
     year = tx_date.year
     counter = (
@@ -28,8 +28,12 @@ def next_reference(db: Session, tx_type, tx_date: date) -> str:
         counter = ReferenceCounter(prefix=prefix, year=year, last_number=0)
         db.add(counter)
         db.flush()
-    counter.last_number += 1
-    return f"{prefix}-{year}-{counter.last_number:03d}"
+    while True:
+        counter.last_number += 1
+        reference = f"{prefix}-{year}-{counter.last_number:03d}"
+        exists = db.query(Transaction.id).filter(Transaction.reference == reference).first()
+        if not exists:
+            return reference
 
 
 @router.get("/", response_model=List[TransactionOut])
