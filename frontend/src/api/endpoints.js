@@ -7,10 +7,11 @@ export const authAPI = {
 }
 
 export const usersAPI = {
-  list:       ()         => api.get('/users/'),
-  create:     (data)     => api.post('/users/', data),
-  update:     (id, data) => api.patch(`/users/${id}`, data),
-  deactivate: (id)       => api.delete(`/users/${id}`),
+  list:          ()                => api.get('/users/'),
+  create:        (data)            => api.post('/users/', data),
+  update:        (id, data)        => api.patch(`/users/${id}`, data),
+  resetPassword: (id, newPassword) => api.patch(`/users/${id}/reset-password`, { new_password: newPassword }),
+  deactivate:    (id)              => api.delete(`/users/${id}`),
 }
 
 export const customersAPI = {

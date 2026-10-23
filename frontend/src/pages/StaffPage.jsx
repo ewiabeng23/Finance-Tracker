@@ -126,6 +126,78 @@ function EditModal({ onClose, onSaved, initial }) {
   )
 }
 
+function ResetPasswordModal({ onClose, onSaved, target }) {
+  const { lang } = useLang()
+  const t  = k => TR[lang][k]
+  const fr = lang === 'fr'
+  const [newPassword, setNewPassword] = useState('')
+  const [visible,     setVisible]     = useState(false)
+  const [loading,     setLoading]     = useState(false)
+  const [error,       setError]       = useState('')
+
+  const submit = async () => {
+    if (newPassword.trim().length < 6) {
+      setError(fr ? 'Le mot de passe doit contenir au moins 6 caractères' : 'Password must be at least 6 characters')
+      return
+    }
+    setLoading(true); setError('')
+    try {
+      await usersAPI.resetPassword(target.id, newPassword)
+      onSaved()
+    } catch (e) {
+      const detail = e.response?.data?.detail
+      setError(typeof detail === 'string' ? detail : (fr ? 'Erreur lors de la réinitialisation' : 'Error resetting password'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <button className="modal-close" onClick={onClose}>×</button>
+        <div className="modal-eyebrow">{fr ? 'Sécurité du compte' : 'Account security'}</div>
+        <h2>{fr ? 'Réinitialiser le mot de passe' : 'Reset password'}</h2>
+        <p style={{ fontSize:13, color:'var(--white-dim)', marginBottom:20 }}>
+          {target.full_name} (@{target.username})
+        </p>
+        <div className="form-group">
+          <label>{fr ? 'Nouveau mot de passe temporaire' : 'New temporary password'}</label>
+          <div style={{ display:'flex', gap:8 }}>
+            <input
+              type={visible ? 'text' : 'password'}
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              placeholder={t('user_modal_password_placeholder')}
+              style={{ flex:1 }}
+              autoFocus
+            />
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={() => setVisible(v => !v)}
+            >
+              {visible ? (fr ? 'Masquer' : 'Hide') : (fr ? 'Afficher' : 'Show')}
+            </button>
+          </div>
+        </div>
+        <p style={{ fontSize:12, color:'var(--muted)', marginBottom:16 }}>
+          {fr
+            ? 'Communiquez ce mot de passe à la personne. Elle pourra le changer avec le bouton "Mot de passe".'
+            : 'Give this password to the staff member. They can change it with the "Password" button.'}
+        </p>
+        {error && <p className="form-error" style={{ marginBottom:12 }}>⚠ {error}</p>}
+        <div className="modal-actions">
+          <button className="btn btn-primary" style={{ flex:1 }} onClick={submit} disabled={loading}>
+            {loading ? t('user_modal_saving') : (fr ? 'Réinitialiser' : 'Reset password')}
+          </button>
+          <button className="btn btn-outline" onClick={onClose}>{t('modal_cancel')}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function StaffPage() {
   const { lang } = useLang()
   const t = k => TR[lang][k]
@@ -134,6 +206,7 @@ export default function StaffPage() {
   const [showModal, setShowModal] = useState(false)
   const [editModal, setEditModal] = useState(false)
   const [editing,   setEditing]   = useState(null)
+  const [resetting, setResetting] = useState(null)
   const [loading,   setLoading]   = useState(true)
 
   const load = () => {
@@ -255,8 +328,11 @@ export default function StaffPage() {
                   <span key={p} style={{ fontSize:10, letterSpacing:'1px', padding:'2px 8px', background:'var(--white-faint)', color:'var(--white-dim)' }}>{p}</span>
                 ))}
               </div>
-              <div style={{ display:'flex', gap:8, marginTop:4 }}>
+              <div style={{ display:'flex', gap:8, marginTop:4, flexWrap:'wrap' }}>
                 <button className="btn btn-outline btn-sm" onClick={() => { setEditing(u); setEditModal(true) }}>{t('staff_edit')}</button>
+                <button className="btn btn-outline btn-sm" onClick={() => setResetting(u)}>
+                  {lang === 'fr' ? 'Réinitialiser mot de passe' : 'Reset password'}
+                </button>
                 <button className="btn btn-danger btn-sm" onClick={() => handleDeactivate(u)}>{t('staff_deactivate')}</button>
               </div>
             </div>
@@ -296,6 +372,17 @@ export default function StaffPage() {
           initial={editing}
           onClose={() => { setEditModal(false); setEditing(null) }}
           onSaved={() => { setEditModal(false); setEditing(null); load(); show(t('staff_updated')) }}
+        />
+      )}
+      {resetting && (
+        <ResetPasswordModal
+          target={resetting}
+          onClose={() => setResetting(null)}
+          onSaved={() => {
+            const name = resetting.username
+            setResetting(null)
+            show((lang === 'fr' ? 'Mot de passe réinitialisé' : 'Password reset') + ': ' + name)
+          }}
         />
       )}
     </div>
