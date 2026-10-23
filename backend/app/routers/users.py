@@ -4,7 +4,7 @@ from typing import List
 from app.core.database import get_db
 from app.core.security import get_current_user, require_manager, hash_password
 from app.models.user import User
-from app.schemas.schemas import UserCreate, UserUpdate, UserOut
+from app.schemas.schemas import UserCreate, UserUpdate, UserOut, ResetPasswordRequest
 
 router = APIRouter()
 
@@ -49,6 +49,22 @@ def update_user(
     db.commit()
     db.refresh(user)
     return user
+
+@router.patch("/{user_id}/reset-password")
+def reset_password(
+    user_id: int,
+    payload: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_manager)
+):
+    if len(payload.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.password = hash_password(payload.new_password)
+    db.commit()
+    return {"message": f"Password reset for {user.username}"}
 
 @router.delete("/{user_id}")
 def deactivate_user(

@@ -30,6 +30,9 @@ class UserUpdate(BaseModel):
     is_active:  Optional[bool] = None
     role:       Optional[UserRole] = None
 
+class ResetPasswordRequest(BaseModel):
+    new_password: str
+
 class UserOut(BaseModel):
     id:        int
     full_name: str
