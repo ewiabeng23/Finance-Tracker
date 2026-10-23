@@ -3,3 +3,4 @@ from app.models.user import User
 from app.models.transaction import Transaction
 from app.models.customer import Customer
 from app.models.daily_cash import DailyCash
+from app.models.reference_counter import ReferenceCounter
