@@ -44,13 +44,6 @@ export default function TransactionsPage() {
 
   useEffect(() => { load() }, [filter, search, catFilter, dateFrom, dateTo])
 
-  const handleDelete = async (tx) => {
-    if (!window.confirm(`${t('tx_confirm_del')} ${tx.reference}?`)) return
-    await transactionsAPI.delete(tx.id)
-    show(t('tx_deleted'), 'success')
-    load()
-  }
-
   const txsWithBalance = () => {
     let balance = 0
     return [...transactions].reverse().map(tx => {
@@ -399,10 +392,7 @@ export default function TransactionsPage() {
                       </button>
                     )}
                     {isManager && (
-                      <>
-                        <button className="btn btn-outline btn-sm" onClick={() => { setEditing(tx); setShowModal(true) }}>{t('tx_edit')}</button>
-                        <button className="btn btn-danger btn-sm" onClick={() => handleDelete(tx)}>{t('tx_delete')}</button>
-                      </>
+                      <button className="btn btn-outline btn-sm" onClick={() => { setEditing(tx); setShowModal(true) }}>{t('tx_edit')}</button>
                     )}
                   </div>
                 </td>
