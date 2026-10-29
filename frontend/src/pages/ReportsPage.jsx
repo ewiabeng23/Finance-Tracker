@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { reportsAPI, transactionsAPI } from '../api/endpoints'
-import { formatAmount, formatAmountPDF, formatDate, EXPENSE_CATS, todayISO } from '../api/utils'
+import { formatAmount, formatAmountPDF, formatDate, getCatLabel, EXPENSE_CATS, todayISO } from '../api/utils'
 import { useLang } from '../context/LanguageContext'
 import { TR } from '../api/translations'
 import { useToast } from '../hooks/useToast'
@@ -122,10 +122,10 @@ export default function ReportsPage() {
         startY: y + 4,
         head: [[lang === 'fr' ? 'Poste' : 'Item', lang === 'fr' ? 'Montant' : 'Amount']],
         body: [
-          ...pl.income_lines.map(l => [l.category, formatAmountPDF(l.total, 'XAF')]),
+          ...pl.income_lines.map(l => [getCatLabel(l.category, 'income', lang), formatAmountPDF(l.total, 'XAF')]),
           [lang === 'fr' ? 'TOTAL ENTREES' : 'TOTAL INCOME', formatAmountPDF(pl.total_income, 'XAF')],
           ['', ''],
-          ...pl.expense_lines.map(l => [l.category, formatAmountPDF(l.total, 'XAF')]),
+          ...pl.expense_lines.map(l => [getCatLabel(l.category, 'expense', lang), formatAmountPDF(l.total, 'XAF')]),
           [lang === 'fr' ? 'TOTAL SORTIES' : 'TOTAL EXPENSES', formatAmountPDF(pl.total_expenses, 'XAF')],
           ['', ''],
           [lang === 'fr' ? 'BENEFICE NET' : 'NET PROFIT', formatAmountPDF(pl.net_profit, 'XAF')],
@@ -153,7 +153,7 @@ export default function ReportsPage() {
         formatDate(tx.date, lang),
         tx.reference,
         (tx.description || '').slice(0, 30),
-        tx.category,
+        getCatLabel(tx.category, tx.type, lang),
         tx.created_by_user?.full_name || '-',
         tx.type === 'income' ? (lang === 'fr' ? 'Entree' : 'Income') : (lang === 'fr' ? 'Sortie' : 'Expense'),
         (tx.type === 'expense' ? '-' : '+') + formatAmountPDF(tx.amount, tx.currency),
@@ -190,7 +190,7 @@ export default function ReportsPage() {
       [lang === 'fr' ? 'Date'          : 'Date']:         tx.date,
       [lang === 'fr' ? 'Reference'     : 'Reference']:    tx.reference,
       [lang === 'fr' ? 'Type'          : 'Type']:         tx.type === 'income' ? (lang === 'fr' ? 'Entree' : 'Income') : (lang === 'fr' ? 'Sortie' : 'Expense'),
-      [lang === 'fr' ? 'Categorie'     : 'Category']:     tx.category,
+      [lang === 'fr' ? 'Categorie'     : 'Category']:     getCatLabel(tx.category, tx.type, lang),
       [lang === 'fr' ? 'Description'   : 'Description']:  tx.description || '',
       [lang === 'fr' ? 'Client'        : 'Client']:       tx.customer?.full_name || '',
       [lang === 'fr' ? 'Collaborateur' : 'Staff']:        tx.worker_name || '',
@@ -224,10 +224,10 @@ export default function ReportsPage() {
     if (pl) {
       const plRows = [
         { [lang === 'fr' ? 'Poste' : 'Item']: "Diko's Assurances SARL - NIU: " + NIU, [lang === 'fr' ? 'Montant' : 'Amount']: '' },
-        ...pl.income_lines.map(l  => ({ [lang === 'fr' ? 'Poste' : 'Item']: l.category, [lang === 'fr' ? 'Montant' : 'Amount']: l.total })),
+        ...pl.income_lines.map(l  => ({ [lang === 'fr' ? 'Poste' : 'Item']: getCatLabel(l.category, 'income', lang), [lang === 'fr' ? 'Montant' : 'Amount']: l.total })),
         { [lang === 'fr' ? 'Poste' : 'Item']: lang === 'fr' ? 'TOTAL ENTREES'  : 'TOTAL INCOME',    [lang === 'fr' ? 'Montant' : 'Amount']: pl.total_income },
         { [lang === 'fr' ? 'Poste' : 'Item']: '',                                                    [lang === 'fr' ? 'Montant' : 'Amount']: '' },
-        ...pl.expense_lines.map(l => ({ [lang === 'fr' ? 'Poste' : 'Item']: l.category, [lang === 'fr' ? 'Montant' : 'Amount']: l.total })),
+        ...pl.expense_lines.map(l => ({ [lang === 'fr' ? 'Poste' : 'Item']: getCatLabel(l.category, 'expense', lang), [lang === 'fr' ? 'Montant' : 'Amount']: l.total })),
         { [lang === 'fr' ? 'Poste' : 'Item']: lang === 'fr' ? 'TOTAL SORTIES'  : 'TOTAL EXPENSES',  [lang === 'fr' ? 'Montant' : 'Amount']: pl.total_expenses },
         { [lang === 'fr' ? 'Poste' : 'Item']: '',                                                    [lang === 'fr' ? 'Montant' : 'Amount']: '' },
         { [lang === 'fr' ? 'Poste' : 'Item']: lang === 'fr' ? 'BENEFICE NET'   : 'NET PROFIT',      [lang === 'fr' ? 'Montant' : 'Amount']: pl.net_profit },
@@ -383,7 +383,7 @@ export default function ReportsPage() {
               </div>
               {pl.income_lines.map(l => (
                 <div key={l.category} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderBottom:'1px solid var(--navy-border)' }}>
-                  <span style={{ fontSize:13, color:'var(--white-dim)', textTransform:'capitalize' }}>{l.category}</span>
+                  <span style={{ fontSize:13, color:'var(--white-dim)', textTransform:'capitalize' }}>{getCatLabel(l.category, 'income', lang)}</span>
                   <span style={{ fontFamily:'var(--font-serif)', fontSize:15, color:'var(--green)' }}>+{formatAmount(l.total, 'XAF')}</span>
                 </div>
               ))}
@@ -398,7 +398,7 @@ export default function ReportsPage() {
               </div>
               {pl.expense_lines.map(l => (
                 <div key={l.category} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderBottom:'1px solid var(--navy-border)' }}>
-                  <span style={{ fontSize:13, color:'var(--white-dim)', textTransform:'capitalize' }}>{l.category}</span>
+                  <span style={{ fontSize:13, color:'var(--white-dim)', textTransform:'capitalize' }}>{getCatLabel(l.category, 'expense', lang)}</span>
                   <span style={{ fontFamily:'var(--font-serif)', fontSize:15, color:'var(--red)' }}>-{formatAmount(l.total, 'XAF')}</span>
                 </div>
               ))}
